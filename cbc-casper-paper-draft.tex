@@ -237,7 +237,7 @@ Minimal CBC Casper protocol states will therefore be determined by the choice of
 We will define protocol states ($\Sigma$) as \emph{certain} sets of messages, and messages ($M$) as \emph{certain} triples of the form (consensus value, validator name, protocol state). Our target is therefore something that satisfies these formulas:
 
 \begin{align}
-\Sigma &\subset \mathcal{P}(M) \\
+\Sigma &\subset \mathcal{P}_{finite}(M) \\
 M &\subset \mathcal{C} \times \mathcal{V} \times \Sigma
 \end{align}
 
@@ -260,7 +260,7 @@ We can construct finite protocol states that satisfy these equations by using th
 \begin{align}
   \Sigma^0& := \{\emptyset\} \\
   M^n& := \{ m \in \mathcal{C} \times \mathcal{V} \times \Sigma^n: Estimate(m) \in \mathcal{E}(\sigma)\}\\
-  \Sigma^n& := \{ \sigma \in \mathcal{P}(M^{n-1}) : m \in \sigma \implies Justification(m) \subseteq \sigma \} ~ ~ \text{ for $n > 0$ } \\
+  \Sigma^n& := \{ \sigma \in \mathcal{P}_{finite}(M^{n-1}) : m \in \sigma \implies Justification(m) \subseteq \sigma \} ~ ~ \text{ for $n > 0$ } \\
   M& := \bigcup_{i = 0}^{\infty} M^i \\
   \Sigma& := \bigcup_{i = 0}^{\infty} \Sigma^i
 \end{align}

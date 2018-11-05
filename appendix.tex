@@ -17,7 +17,7 @@ The first definition is almost exactly the definition given in the draft, but it
 \begin{align}
 \Gamma_0 &= \{\emptyset\} \\
 M_n &= \{ (c, v, \gamma) \in \mathcal{C} \times \mathcal{V} \times \Gamma_{n} : c \in \mathcal{E}(\gamma) \} \\
-\Gamma_n &= \{ \gamma \in \mathcal{P}_{fin}(M_{n-1}) : (c, v, \gamma') \in \gamma \implies \gamma' \subseteq \gamma \\
+\Gamma_n &= \{ \gamma \in \mathcal{P}_{finite}(M_{n-1}) : (c, v, \gamma') \in \gamma \implies \gamma' \subseteq \gamma \\
 &~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\land \sum_{ \substack{v \in \mathcal{V} :  \\ \exists (c_1 , v, \gamma_1), (c_2 , v, \gamma_2) \in \gamma^2, \\ c_1 \neq c_2 \lor \gamma_1 \neq \gamma_2 \\  (c_2 , v, \gamma_2) \notin \gamma_1 ~\land ~ (c_1 , v, \gamma_1) \notin \gamma_2}} \mathcal{W}(v) \leq t \}  ~~~~~~~~~~~~~~~~\text{ for $n > 0$}  \\
 M &= \bigcup_{n = 0}^\infty M_n \\
 \Gamma &= \bigcup_{n = 0}^\infty \Gamma_n  \\
