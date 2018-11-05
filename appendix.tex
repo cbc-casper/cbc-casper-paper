@@ -1,0 +1,46 @@
+\section{Appendix}
+
+Here we give two concise equivalent definitions of the Minimal CBC Casper protocol states definition. They are less readable than the presentation given in the paper, but might be of interests to some readers.
+
+Both of the definitions given here use the same ``parameters" as presented in this draft.
+
+\begin{align}
+&\text{Consensus Values :   } && \mathcal{C} \in SET ~ \land ~ \mathcal{C} \neq \emptyset \\ 
+&\text{Validators :   } && \mathcal{V} \in SET ~ \land ~ \mathcal{V} \neq \emptyset\\
+&\text{Estimator :   } &&\mathcal{E}: SET \to \mathcal{P}(\mathcal{C}) \\
+&\text{Validator Weights :   } &&\mathcal{W}: \mathcal{V} \to \mathbb{R}_+ \\
+&\text{Equivocation Fault Tolerance Threshold :   } && t \in \mathbb{R} \land 0 \leq t < \sum_{v \in \mathcal{V}} \mathcal{W}(v)
+\end{align}
+
+The first definition is almost exactly the definition given in the draft, but it in-lines definitions and uses pattern matching. Instead of defining intermediate states $\Sigma$ and then actual protocol states $\Sigma_t$, we directly define $\Gamma = \Sigma_t$:
+
+\begin{align}
+\Gamma_0 &= \{\emptyset\} \\
+M_n &= \{ (c, v, \gamma) \in \mathcal{C} \times \mathcal{V} \times \Gamma_{n} : c \in \mathcal{E}(\gamma) \} \\
+\Gamma_n &= \{ \gamma \in \mathcal{P}_{fin}(M_{n-1}) : (c, v, \gamma') \in \gamma \implies \gamma' \subseteq \gamma \\
+&~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~\land \sum_{ \substack{v \in \mathcal{V} :  \\ \exists (c_1 , v, \gamma_1), (c_2 , v, \gamma_2) \in \gamma^2, \\ c_1 \neq c_2 \lor \gamma_1 \neq \gamma_2 \\  (c_2 , v, \gamma_2) \notin \gamma_1 ~\land ~ (c_1 , v, \gamma_1) \notin \gamma_2}} \mathcal{W}(v) \leq t \}  ~~~~~~~~~~~~~~~~\text{ for $n > 0$}  \\
+M &= \bigcup_{n = 0}^\infty M_n \\
+\Gamma &= \bigcup_{n = 0}^\infty \Gamma_n  \\
+\end{align}
+
+The second definition is as a fixed point of a function/action that adds protocol messages to protocol states (but only adds them if the fault weight is not pushed beyond the equivoation fault tolerance threshold $t$), namely:
+
+\begin{align}s
+f(X) &= X \cup \bigcup_{\substack{(\gamma, \gamma') \in X^2 : \\ \gamma \subseteq \gamma' \\ c \in \mathcal{E}(\gamma) \\ v \in \mathcal{V}}}
+\begin{cases}
+      \{\gamma' \cup \{(c, v, \gamma)\} \} &, \text{ if } \sum_{ \substack{v' \in \mathcal{V} : \\ \exists (c_1 , v', \gamma_1), (c_2 , v', \gamma_2) \in (\gamma' \cup \{(c, v, \gamma)\})^2 \\ c_1 \neq c_2 ~ \lor ~ \gamma_1 \neq \gamma_2 \\  (c_2 , v', \gamma_2) \notin \gamma_1  \land (c_1 , v', \gamma_1) \notin \gamma_2}} \mathcal{W}(v') \leq t \\
+      \{\gamma'\} &, \text{ otherwise }
+\end{cases}
+\end{align}
+
+The protocol states can be defined as the following fixed point, which the result of applying our function $f$ to ``initial'' protocol state $\emptyset$ a countable infinite number of times.
+
+\[
+\Gamma = \text{ fix } f ~ \{\emptyset\} = f(f(f(f(f(\dots f(f(\{\emptyset\}))\dots)))))
+\]
+
+And the messages are the elements of the protocol states:
+
+\[
+M = \bigcup_{\substack{\gamma \in \Gamma \\ m \in \gamma}} \{m\}
+\]

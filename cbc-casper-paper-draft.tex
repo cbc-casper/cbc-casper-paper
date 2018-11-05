@@ -1,0 +1,732 @@
+\documentclass{article}
+\usepackage{graphicx}
+\usepackage{amsthm}
+\usepackage{amsmath}
+\usepackage{mathtools}
+\usepackage{amssymb}
+\usepackage{tikz-cd}
+\usepackage{etoolbox}
+\usepackage[]{algorithm2e}
+\usepackage[section]{placeins}
+\usepackage{hyperref}
+\usepackage{cancel}
+
+\usepackage{scalerel}
+\usepackage{stackengine,wasysym}
+
+\newcommand\reallywidetilde[2]{\ThisStyle{%
+  \setbox0=\hbox{$\SavedStyle#1$  }%
+  \stackengine{-.1\LMpt}{$\SavedStyle#1$; #2}{%
+    \stretchto{\scaleto{\SavedStyle\mkern.2mu\AC}{.5150\wd0}}{.6\ht0}%
+  }{O}{c}{F}{T}{S}%
+}}
+
+
+%\usepackage{blindtext}
+
+%\usepackage[x11names]{xcolor}
+%\usepackage[textwidth=30mm]{todonotes}
+%\usepackage[dvipsnames,svgnames]{xcolor}						% for color
+%\colorlet{MyBlue}{DodgerBlue!75!Black}
+%\colorlet{MyGreen}{DarkGreen!85!Black}
+%\newcommand{\GP}[1]{\todo[color=DodgerBlue!20!LightGray,
+%author=\textbf{GP}]{\small #1\\}}
+
+
+\newcommand{\entangled}[1]{\underset{#1}{\sim}}
+
+\usepackage{geometry}
+ \geometry{
+ a4paper,
+ total={170mm,257mm},
+ left=20mm,
+ top=20mm,
+ }
+
+\let\oldproofname=\proofname
+\renewcommand\proofname{\bf{\oldproofname}}
+\renewcommand\qedsymbol{$\blacksquare$}
+
+\theoremstyle{definition}
+\newtheorem{thm}{Theorem}
+\newtheorem{lemma}{Lemma}
+\newtheorem{defn}{Definition}[section]
+
+\newcommand{\notimplies}{%
+  \mathrel{{\ooalign{\hidewidth$\not\phantom{=}$\hidewidth\cr$\implies$}}}}
+
+\newcommand{\cat}{
+  \mathbf
+}
+\newcommand{\domain}[1]{
+  \mathrm{dom}(#1)
+}
+\newcommand{\codomain}[1]{
+  \mathrm{cod}(#1)
+}
+\newcommand{\idarrow}[1][]{
+  \mathrm{1}_{#1}
+}
+\newcommand{\notdownharpoonright}{
+  \mathclap{\not}\makebox[\widthof{$\downharpoonright$\:\:}][c]{$\downharpoonright$}
+}
+
+\DeclareMathOperator*{\argmax}{arg\,max}
+
+\AtBeginEnvironment{quote}{\small}
+
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{1em}
+\raggedbottom
+
+\graphicspath{{figures}}
+
+
+\begin{document}
+
+\title{Introducing the ``Minimal CBC Casper" Family of Consensus Protocols  \\ \vspace{5mm} \small{DRAFT v1.0}}
+\author{Vlad Zamfir, Nate Rush, Aditya Asgaonkar, Georgios Piliouras \\ \\ Ethereum Research}
+\maketitle
+
+\begin{abstract}
+CBC Casper is a family of ``correct-by-construction" consensus protocols that share the same proof of asynchronous, Byzantine fault tolerant consensus safety. We describe this family of protocols by defining their protocol states and protocol state transitions, and then we provide a proof of Byzantine fault tolerant consensus safety for the entire Minimal CBC Casper family of protocols. We give examples members of this family of protocols, including a binary consensus protocol. ``Casper the Friendly Ghost", a blockchain consensus protocol, and a sharded blockchain consensus protocol. Each of these examples is ``correct-by-construction" because the way they are defined guarantees that they are part of this family of protocols, and therefore satisfy the consensus safety theorem. This draft is intended to be introductory and educational, it is not a complete description of a system that can be implemented exactly as specified.
+\end{abstract}
+
+\pagebreak
+\tableofcontents
+
+\pagebreak
+\section{Introduction}
+
+\subsection{Consensus Protocols}
+
+Consensus protocols are used by nodes in a distributed network to make consistent decisions out of possibly inconsistent alternative decisions. For example, in a binary consensus protocol a decision on ``1" is said to be inconsistent with a decision on ``0" and consistent with a decision on ``1". In a blockchain consensus protocol, a decision on one block is called ``inconsistent" with another when they are not in the same blockchain, and ``consistent" when they are in the same chain.
+
+More specifically, consensus protocols traditionally are said to provide two properties:
+\begin{itemize}
+\item \textbf{Safety}: It's not possible for nodes to make inconsistent decisions
+\item \textbf{Liveness}: Nodes eventually/inevitably make decisions
+\end{itemize}
+
+A consensus protocol is said to be ``synchronously safe" (or ``live in a synchronous network"), if its safety (or liveness) is guaranteed by an assumption about timing, or about the way that race conditions get resolved (e.g. all these messages will arrive before some timeout). It is called ``asynchronously safe" (or ``live in asynchrony") if its safety (or liveness) is guaranteed without assumptions about timing, or about the way that race conditions get resolved (with the exception that every message sent is eventually recieved).
+
+Fault tolerant consensus protocols have safety and/or liveness despite some number of \emph{faults}. Traditionally, faulty behaviour is either considered to be ``Crash Faulty", where nodes are faulty by virtue of not sending messages, or they are considered ``Byzantine", which means that they may exhibit arbitrary behaviour. There is famous result known as ``FLP impossibility" \cite{Fischer_Lynch_Paterson_FLP_Impossibility_1985} that shows that it's impossible to have a deterministic consensus protocol that is safe and live in an asynchronous network, if there is one crash fault.
+
+More specifically, we use the following fault classification:
+
+\textbf{Liveness faults:}
+\begin{itemize}
+\item Crash fault: failing to send a message when expected
+\item Ommission fault: failing to receive a message when expected
+\end{itemize}
+\textbf{Safety faults:}
+\begin{itemize}
+\item Invalid message fault: producing messages that cannot be produced by a protocol following node
+\item Equivocation fault: producing valid messages in a way that could not have been produced by a \emph{single} execution of the protocol
+\end{itemize}
+
+They are named this way because liveness faults are indistinguishable from network latency (from any point in the distributed system that isn't the faulty node itself), and because network latency (and therefore liveness faults) cannot cause protocol-following nodes to make inconsistent decisions in an asynchronously safe consensus protocol. We assumed that nodes can check the validity of messages, so if we insist that they do, then only equivocation faults will be able to cause consensus failure.
+
+In a non-trivial consensus protocol, protocol-following nodes following completely independent executions of the protocol can decide on inconsistent values. Equivocating nodes can (by definition) exclusively show different nodes messages from independent protocol executions, and as a result, a large enough number of equivocation faults is fundamentally enough to cause consensus failure in any consensus protocol.
+
+\subsection{About This Paper}
+
+This document specifies a family of asynchronously safe consensus protocols in terms of the protocol states (sets of messages) and protocol state transitions (the superset relation) that clients running the protocol will execute (by receiving messages from consensus forming nodes). Each member of the family satisfies a proof (shared here) that if there aren't more than some number (weight) of equivocations then it is impossible for nodes to make inconsistent decisions. This number, the protocol's equivocation fault tolerance threshold, is given as a parameter of the CBC Casper family of protocols. Equivocation faults are a subset of Byzantine faults and we have consensus safety unless there are too many equivocation faults specifically, meaning that the consensus protocols tolerate the equivocation fault tolerance threshold number (weight) of Byzantine faults.
+
+Each member of the family is going to be identified by five ``parameters". Four of these parameters can be given before the protocol specification, but one (``the estimator") must initially be left undefined because it is a function of the (initially undefined) protocol states. The specification of the family of protocols is a partial specification of any member of the family, because the parameters need to be defined in order for a consensus protocol to be specified. It is possible to choose the parameters in a way that corresponds to a trivial consensus protocol, so we will give some non-trivial example protocols by giving example parameters.
+
+Note that this work does not make any synchrony assumptions, nor does it discuss liveness. It doesn't say anything about when validators send or receive messages. It doesn't address validator rotation, incentive mechanisms, proof-of-stake, light clients, scalability, or message source authentication. The consensus protocols specified here therefore should not be considered completely specified even after the parameters are specified.
+
+\subsection{Prerequisite Notation}
+\begin{center}
+  \fbox{
+    \parbox{\textwidth-4em}{
+      \begin{align*}
+      &\textbf{Notation} &&\textbf{Description} \\
+      &\neg p,~ p \land q,~ p \lor q &&\text{boolean negation, ``and", ``or"} \\
+      &p \implies q, ~ p \iff q &&\text{boolean implication and equivalence} \\
+      &X = \{x_1, x_2, \dots, x_n\} &&\text{set notation} \\
+      &\{\} = \emptyset &&\text{the empty set} \\
+      & X \cup Y,~ X \cap Y,~ X \setminus Y &&\text{set union, intersection, difference} \\
+      &X \subseteq Y, X \subset Y &&\text{improper subset and proper subset} \\
+      &X \times Y &&\text{Cartesian product} \\
+      &x \in X &&\text{set membership} \\
+      &\forall x \in X, ~\exists y \in Y &&\text{universal and existential quantifiers} \\
+      &Y^{X} &&\text{the set of maps from $X$ to $Y$} \\
+      &\{y \in Y : \exists x \in X, f(x) = y\} &&\text{set builder notation} \\
+      &\mathbb{N},~ \mathbb{Z},~ \mathbb{R} &&\text{Natural numbers, integers, real numbers} \\
+      &\sum_{x \in X} W(x), &&\text{``Sigma" sum notation} \\
+      &\lambda x. f(x, y) &&\text{lambda (anonymous) function creation}
+      \end{align*}
+    }
+  }
+\end{center}
+
+
+\subsection{Acknowledgements}
+
+We'd like to thank Leslie Lamport and other pre-blockchain consensus protocol researchers for founding the field that left us with excellent definitions and some interesting consensus protocols, Satoshi Nakamoto for Nakamoto (``Proof-of-Work") consensus\cite{nakamoto}, as it served as an excellent introduction to Byzantine fault tolerant consensus and because its ``forking" behaviour directly led to this work, and Greg Meredith for work on the definition of the protocol message data structure and for the introduction to the ``correct-by-construction" methodology. We would finially like to thank Vitalik Buterin for his continued support, collaboration, and mentorship since the very early stages of this research, over three years ago.
+
+\pagebreak
+\section{Description of CBC Casper}
+
+\subsection{CBC Casper ``Parameters"}
+
+Our first parameter is a set of names that will label the senders of protocol messages. The senders are understood to be the consensus forming nodes, called ``validators":
+
+\begin{defn}[Validator names]
+A non-empty set:
+$$
+\mathcal{V}
+$$
+\end{defn}
+
+Without loss of generality (and in preparation for proof-of-stake), we assign a weight to each validator:
+
+\begin{defn}[Validator weights]
+A function:
+$$
+\mathcal{W}: \mathcal{V} \to \mathbb{R}_+
+$$
+\end{defn}
+
+The CBC Casper protocol states are parametric in a Byzantine fault tolerance threshold:
+
+\begin{defn}[Byzantine fault tolerance threshold]
+A non-negative real number, strictly smaller than the total validator weights
+$$0 \leq t < \sum_{v \in \mathcal{V}} \mathcal{W}(v)$$
+\end{defn}
+
+The protocols will be guaranteed to have consensus safety tolerating up to ``$t$ Byzantine faults", \emph{measured by weight}.
+
+Different protocols in the CBC Casper family can make decisions regarding different values:
+
+\begin{defn}[Consensus values]
+A multi-element set:
+$$
+\mathcal{C}
+$$
+\end{defn}
+
+In a binary consensus protocol, $\mathcal{C} = \{0,1\}$, while in a blockchain consensus protocol, $\mathcal{C}$ is the set of all possible blockchains.
+
+The final parameter, called ``the estimator", relates CBC Casper protocol states to sets of consensus values (subsets of $\mathcal{C}$). To give the function signature of this parameter we need to define the CBC Casper protocol states, $\Sigma$. However, we will leave this for the protocol definition section, and for now simply write:
+
+\begin{defn}[Estimator]
+A function
+$$
+\mathcal{E}: \Sigma \to \mathcal{P}(\mathcal{C})\setminus\emptyset
+$$
+\end{defn}
+
+Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because domain of the estimator has not yet been defined, it isn't quite proper for us ask for the estimator a parameter. However, for ease of presentation we will assume that we have the estimator as a parameter.
+
+Minimal CBC Casper protocol states will therefore be determined by the choice of these parameters:
+
+\begin{itemize}
+\item Validator names $\mathcal{V}$,
+\item Validator weights $\mathcal{W}$,
+\item Fault tolerance threshold $t$,
+\item Consensus values $\mathcal{C}$, and
+\item Estimator $\mathcal{E}$
+\end{itemize}
+
+\pagebreak
+\subsection{Protocol Definition}
+
+We will define protocol states ($\Sigma$) as \emph{certain} sets of messages, and messages ($M$) as \emph{certain} triples of the form (consensus value, validator name, protocol state). Our target is therefore something that satisfies these formulas:
+
+\begin{align}
+\Sigma &\subset \mathcal{P}(M) \\
+M &\subset \mathcal{C} \times \mathcal{V} \times \Sigma
+\end{align}
+
+We will call the consensus value the ``estimate" of a message, the validator name the ``sender", and the protocol state the ``justification", and define these corresponding convenience functions:
+
+\begin{defn}[Estimate, Sender, Justification]
+\begin{align}
+Estimate&:M \to \mathcal{C} \\
+Sender&:M \to \mathcal{V} \\
+Justification&:M \to \Sigma \\
+Estimate((c, v, \sigma)) &:= c \\
+Sender((c, v, \sigma)) &:= v \\
+Justification((c, v, \sigma)) &:= \sigma
+\end{align}
+\end{defn}
+
+We can construct finite protocol states that satisfy these equations by using the empty set of messages as the base case:
+
+\begin{defn}[Preliminary protocol states, $\Sigma$, protocol messages $M$]
+\begin{align}
+  \Sigma^0& := \{\emptyset\} \\
+  M^n& := \{ m \in \mathcal{C} \times \mathcal{V} \times \Sigma^n: Estimate(m) \in \mathcal{E}(\sigma)\}\\
+  \Sigma^n& := \{ \sigma \in \mathcal{P}(M^{n-1}) : m \in \sigma \implies Justification(m) \subseteq \sigma \} ~ ~ \text{ for $n > 0$ } \\
+  M& := \bigcup_{i = 0}^{\infty} M^i \\
+  \Sigma& := \bigcup_{i = 0}^{\infty} \Sigma^i
+\end{align}
+\end{defn}
+
+The type signature of the estimator is $\mathcal{E} : \Sigma \to \mathcal{P}(\mathcal{C}) \setminus \emptyset$, causing possible concern due to our application of $\mathcal{E}$ to $Justification(m) \in \Sigma^n \neq \Sigma$. However we note that $\Sigma^n \subset \Sigma$, meaning that $\mathcal{E}$ is defined over $\Sigma^n$.
+
+Note that we explicitly restricted protocol messages to only have consensus values from the estimator, allowing validators to make a choice between values of the consensus when the the estimator returns a multi-element set (but not otherwise).
+
+We also restricted the definition of protocol states so that we could have the following definition of protocol state transitions:
+
+\begin{defn}[Protocol state transitions $\to$]
+\begin{align}
+\to &: \Sigma \times \Sigma \to \{True,False\} \\
+&\sigma_1 \to \sigma_2 :\Leftrightarrow \hspace{1mm} \sigma_1 \subseteq \sigma_2
+\end{align}
+\end{defn}
+
+
+We will write this as $\sigma \rightarrow \sigma'$ and we will write $\sigma \nrightarrow \sigma'$ when there isn't a state transition from $\sigma$ to $\sigma'$.
+
+
+We now pivot towards defining the protocol states for the CBC Casper protocol, with fault tolerance threshold $t$, $\Sigma_t \subset \Sigma$. But first, we need to talk about equivocation (a kind of Byzantine fault).
+
+Equivocation faults are a Byzantine behaviour that is fundamentally enough to cause consensus failure in any consensus protocol, and additionally, CBC Casper protocols are guaranteed to be safe as long as not more than $t$ weight of validators are equivocating (and therefore Byzantine).
+
+\begin{defn}[Equivocating messages]
+\begin{align}
+  \cdot \perp \cdot &: M \times M \to \{True,False\}\\
+  m_1 \perp m_2 &:\Leftrightarrow ~ Sender(m_1) = Sender(m_2) \land m_1 \neq m_2 \\
+  &\land m_1 \notin Justification(m_2) \land m_2 \notin Justification(m1)
+  \end{align}
+\end{defn}
+
+Equivocating messages are distinct messages from the same validator that do not include each other in their justifications.
+
+The equivocating validators in a protocol state are simply the validators who have equivocating messages in that state:
+
+\begin{defn}[Equivocating validators]
+\begin{align}
+E: \Sigma &\to \mathcal{P}(\mathcal{V}) \\
+E(\sigma) &:= \{v \in \mathcal{V} : \exists m_1 \in \sigma, \exists m_2 \in \sigma , \hspace{1mm} m_1 \perp m_2 \hspace{1mm} \land \hspace{1mm} Sender(m_1) = v \}
+\end{align}
+\end{defn}
+
+Equivocation corresponds to behaviour that isn't ``single threaded". We will eventually see a lemma showing that non-equivocating validators have at most one latest message.
+
+Instead of considering the number of equivocations, we measure equivocations by weight:
+
+\begin{defn}[Equivocation fault weight]
+\begin{align}
+F: \Sigma &\to \mathbb{R}_+ \\
+F(\sigma) &:= \sum_{v \in E(\sigma)} \mathcal{W}(v)
+\end{align}
+\end{defn}
+
+Note that $F$ is a monotonic function (i.e. $\sigma_1 \subseteq \sigma_2 \implies F(\sigma_1) \leq F(\sigma_2)$).
+
+The CBC Casper protocol states will be parametric in an equivocation fault tolerance threshold $t$, and will use the following protocol states:
+
+\begin{defn}[Protocol states (with equivocation fault tolerance t)]
+$$
+\Sigma_t = \{\sigma \in \Sigma : F(\sigma) \leq t\}
+$$
+\end{defn}
+
+We think of protocol-following nodes as existing in these protocol states ($\Sigma_t$), and following the protocol state transitions ($\to$) to get from one state to another. If a node at state $\sigma \in \Sigma_t$ receives messages $m$ such that $\sigma \cup \{m\} \in \Sigma$, then they will transition to state $\sigma \cup \{m\}$, if it doesn't expose the node to too many equivocation faults (i.e., as long as $F(\sigma \cup \{m\}) \leq t$).
+
+We are now finished the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
+
+
+\pagebreak
+\section{Safety Proof}
+
+Our obligation is to provide a way for nodes to make consistent decisions even if they receive different messages, as long as there are less than $t$ equivocation faults in their protocol states. We do this in two steps, first by guaranteeing that nodes will have common future protocol states (as long as there are less than $t$ equivocation faults \emph{in the union of their protocol states}), and then by showing that their decisions on properties of protocol states will be consistent (if they share common future states, which they will if there aren't too many faults). Finally, we will show how this result can be leveraged to guarantee the consistency of decisions on properties of consensus values.
+
+\subsection{Guaranteeing Common Futures}
+
+We will define the common futures of a protocol states in terms of the intersection of their ``futures cones":
+
+\begin{defn}[Futures cone in $\Sigma_t$]
+\begin{align}
+Futures_t&: \Sigma_t \to \mathcal{P}( \Sigma_t) \\
+Futures_t(\sigma) &:= \{ \sigma' \in \Sigma_t : \sigma \to \sigma'  \}
+\end{align}
+\end{defn}
+
+Note that the futures function is monotonic in protocol state transitions, meaning that the futures cone ``shrinks" during protocol execution:
+
+\begin{lemma}[Monotonic futures]
+$\forall \sigma \in \Sigma_t$, $\forall \sigma' \in \Sigma_t$,
+$$
+\sigma' \in Futures_t(\sigma) \iff Futures_t(\sigma') \subseteq Futures_t(\sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+(Forwards direction)
+\begin{align}
+\sigma' \in Futures_t(\sigma)\iff &\sigma \to \sigma' \\
+\iff &\sigma \to \sigma' \land \forall \sigma''' \in Futures_t(\sigma'), \sigma' \to \sigma''' \\
+\iff &\sigma \to \sigma' \land \forall \sigma''' \in Futures_t(\sigma'), \sigma' \to \sigma''' \land \sigma \to \sigma''' \\
+\implies &\forall \sigma''' \in Futures_t(\sigma'), \sigma' \to \sigma''' \land \sigma \to \sigma''' \\
+\implies &\forall \sigma''' \in Futures_t(\sigma'), \sigma \to \sigma''' \\
+\iff &\forall \sigma''' \in Futures_t(\sigma'), \sigma''' \in Futures_t(\sigma) \\
+\iff &Futures_t(\sigma') \subseteq Futures_t(\sigma)
+\end{align}
+(Backwards direction)
+\begin{align}
+Futures_t(\sigma') \subseteq Futures_t(\sigma) &\iff \forall \sigma'' \in Futures_t(\sigma'), \sigma'' \in Futures_t(\sigma)\\
+&\iff \forall \sigma'' \in Futures_t(\sigma'), \sigma'' \in Futures_t(\sigma) \land \sigma' \in Futures_t(\sigma')\\
+&\implies \sigma' \in Futures_t(\sigma)
+\end{align}
+\end{proof}
+
+%add footnote to say that the other direction, s1~s1 => F(s1s2) \leq t
+We will now present our first key theorem, which guarantees that pairs of nodes have common future states if not more than $t$ fault weight is observed in the union of their states:
+
+\begin{thm}[2-party common futures]
+$\forall \sigma_1 \in \Sigma_t$, $\forall \sigma_2 \in \Sigma_t$,
+$$
+F(\sigma_1 \cup \sigma_2) \leq t \implies Futures_t(\sigma_1) \cap Futures_t(\sigma_2) \neq \emptyset
+$$
+\end{thm}
+
+\begin{proof}
+\begin{align}
+F(\sigma_1 \cup \sigma_2) \leq t &\iff \sigma_1 \cup \sigma_2 \in \Sigma_t \\
+&\iff \sigma_1 \cup \sigma_2 \in \Sigma_t \land\sigma_1 \to \sigma_1 \cup \sigma_2 \land \sigma_2 \to \sigma_1 \cup \sigma_2 \\
+&\iff \sigma_1 \cup \sigma_2 \in \Sigma_t  \land \sigma_1 \to \sigma_1  \cup \sigma_2 \land \sigma_1 \cup \sigma_2 \in \Sigma_t  \land \sigma_2 \to \sigma_1 \cup  \sigma_2 \\
+&\iff \sigma_1 \cup \sigma_2 \in Futures_t(\sigma_1) \land \sigma_1 \cup \sigma_2 \in Futures_t(\sigma_2) \\
+&\iff \sigma_1 \cup \sigma_2 \in Futures_t(\sigma_1) \cap Futures_t(\sigma_2) \\
+&\implies Futures_t(\sigma_1) \cap Futures_t(\sigma_2) \neq \emptyset \\
+\end{align}
+\end{proof}
+
+Note the analagous guarantee that $n$ nodes have a common future if there aren't too many faults in the union of their states:
+
+\begin{thm}[$n$-party common futures]
+\label{thm:nparty_bft_common_futures}
+$\forall \sigma_i \in \Sigma_t$,
+$$
+F(\bigcup_{i=1}^n \sigma_i) \leq t \implies \bigcap_{i=1}^n Futures_t(\sigma_i) \neq \emptyset
+$$
+\end{thm}
+
+\begin{proof}
+Similar to proof of the 2-argument version.
+\end{proof}
+
+The theorems above guarantee that protocol-following nodes have a common future state if the validators that are equivocating in the union of their states have no more than $t$ weight. Therefore, if Byzantine (\emph{and equivocating}) validators have no more than $t$ weight, all protocol-following nodes will have a common future state.
+
+We will use this result to ensure the consistency of decisions made by protocol-following nodes, guaranteeing the consensus safety of CBC Casper consensus protocols.
+
+\subsection{Guaranteeing Consistent Decisions}
+
+In this section, we will show that if nodes have a common future state, then all of the invariant properties of their protocol states are consistent. We will guarantee consensus safety by insisting that nodes have decided on the invariant properties of their protocol states. We will then leverage the consistency of decisions on properties of protocol states to guarantee the consistency of decisions on properties of consensus values.
+
+\subsubsection{Guaranteeing Consistent Decisions on Properties of Protocol States}
+
+Before we can formally state our consensus safety theorems, we need to define some preliminary notions. First, we consider properties of protocol states to be maps from protocol states to $True$ or $False$:
+
+\begin{defn}[Properties of protocol states]
+$$
+P_\Sigma = \{ f \in \{True, False\}^\Sigma \}  %\text{functions $f$ with signature } f : \Sigma \to \{True, False\}
+$$
+\end{defn}
+
+We say that property of a protocol state is called ``decided" from some protocol state if it holds for all future protocol states:
+
+\begin{defn}[Decided properties of protocol states]
+\begin{align}
+Decided_{\Sigma, t}&: P_\Sigma \times \Sigma \to \{True,False\} \\
+Decided_{\Sigma, t}(p, \sigma) &:\Leftrightarrow \forall \sigma' \in Futures_t(\sigma), p(\sigma')
+\end{align}
+\end{defn}
+
+We will now prepare lemmas that we will use to prove consensus safety.
+
+Our first lemma says that if a node is decided on a property at some state, then it will be decided on this property at its future protocol states:
+
+\begin{lemma}[Forward consistency]
+\label{lem:forw_safe} $\forall \sigma \in \Sigma_t$, $\forall \sigma' \in \Sigma_t$, $\forall p \in P_\Sigma$,
+$$
+\sigma' \in Futures_t(\sigma) \implies (Decided_{\Sigma, t}(p,\sigma) \implies Decided_{\Sigma, t}(p,\sigma'))
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+&\sigma' \in Futures_t(\sigma) \land Decided_{\Sigma, t}(p,\sigma) \\
+\iff & Futures_t(\sigma') \subseteq Futures_t(\sigma) \land Decided_{\Sigma, t}(p,\sigma) \\
+\iff & Futures_t(\sigma') \subseteq Futures_t(\sigma) \land \forall \sigma'' \in Futures_t(\sigma), p(\sigma'') \\
+\implies &\forall \sigma'' \in Futures_t(\sigma'), p(\sigma'')\\
+\iff &Decided_{\Sigma, t}(p, \sigma')
+\end{align}
+So now we have
+\begin{align}
+&\sigma' \in Futures_t(\sigma) \land Decided_{\Sigma, t}(p,\sigma) \implies Decided_{\Sigma, t}(p, \sigma')\\
+\implies &\sigma' \in Futures_t(\sigma) \implies (Decided_{\Sigma, t}(p,\sigma) \implies Decided_{\Sigma, t}(p, \sigma'))\\
+\end{align}
+\end{proof}
+
+
+\iffalse
+\begin{lemma}[Current consistency]
+$\forall p \in P_\Sigma$,
+$$
+Decided_{\Sigma, t}(p,\sigma) \implies \neg Decided_{\Sigma, t}(\neg p, \sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+Decided_{\Sigma, t}(p,\sigma) &\implies \forall \sigma' \in Futures_t(\sigma), p(\sigma')\\
+&\implies \exists \sigma' \in Futures_t(\sigma), p(\sigma')\\
+&\implies \neg \forall \sigma' \in Futures_t(\sigma), \neg p(\sigma')\\
+&\implies \neg Decided_{\Sigma, t}(\neg p, \sigma)
+\end{align}
+\end{proof}
+\fi
+
+Our second lemma says that if a node has a decided property at some state, then the negation that property must not have been decided at any possible past state.
+
+\begin{lemma}[Backwards consistency]
+\label{lem:backw_safe}
+$\forall \sigma \in \Sigma_t, \forall \sigma' \in \Sigma_t, \forall p \in P_\Sigma$,
+$$
+\sigma' \in Futures_t(\sigma) \implies (Decided_{\Sigma, t}(p,\sigma') \implies \neg Decided_{\Sigma, t}(\neg p,\sigma))
+$$
+\end{lemma}
+
+Where $\neg$ denotes negation and is defined as expected. %($\neg:\{True,False\}\to\{True,False\}$ with $\neg True = False$ and $\neg False = True$)
+
+\begin{proof}
+\begin{align}
+&\sigma' \in Futures_t(\sigma)  \land Decided_{\Sigma, t}(p,\sigma') \\
+\iff &Futures_t(\sigma') \subseteq Futures_t(\sigma) \land Decided_{\Sigma, t}(p, \sigma') \\
+\iff &Futures_t(\sigma') \subseteq Futures_t(\sigma) \land \forall \sigma'' \in Futures_t(\sigma'), p(\sigma'') \\
+\implies &Futures_t(\sigma') \subseteq Futures_t(\sigma) \land \exists \sigma'' \in Futures_t(\sigma), p(\sigma'') \\
+\implies &\exists \sigma'' \in Futures_t(\sigma), p(\sigma'') \\
+\iff &\neg \forall \sigma'' \in Futures_t(\sigma), \neg p(\sigma'') \\
+\iff &\neg Decided_{\Sigma, t}(\neg p, \sigma)
+\end{align}
+So now we have
+\begin{align}
+&\sigma' \in Futures_t(\sigma) \land Decided_{\Sigma, t}(p,\sigma') \implies \neg Decided_{\Sigma, t}(\neg p, \sigma)\\
+\implies &\sigma' \in Futures_t(\sigma) \implies (Decided_{\Sigma, t}(p,\sigma') \implies \neg Decided_{\Sigma, t}(\neg p, \sigma)) \\
+\end{align}
+\end{proof}
+
+We will now use these two lemmas to prove two-party consensus safety. We show this result before showing $n$-party consensus safety as it is considerably more accessible. Because nodes only decide on properties of protocol states, the only way two nodes can make inconsistent decisions is if one node is decided on a property $p$, and the other is decided on its negation $\neg p$. Our two-party consensus safety theorem therefore states that two nodes don't decide on $p$ and $\neg p$ if there aren't more than $t$ faults:
+
+\begin{thm}[Two-party consensus safety]
+\label{thm:2party_consensus_safety}
+$\forall \sigma_1 \in \Sigma_t, \forall \sigma_2 \in \Sigma_t, \forall p \in P_\Sigma$,
+\begin{align}
+F(\sigma_1 \cup \sigma_2) \leq t \implies \neg (Decided_{\Sigma, t}(p,\sigma_1) \land Decided_{\Sigma, t}(\neg p, \sigma_2))
+\end{align}
+\end{thm}
+
+\begin{proof}
+\begin{align}
+F(\sigma_1\cup\sigma_2) \leq t &\implies Futures_t(\sigma_1) \cap Futures_t(\sigma_2) \neq \emptyset \\
+&\iff \exists \sigma \in Futures_t(\sigma_1) \cap Futures_t(\sigma_2) \\
+&\iff \exists \sigma \in \Sigma_t, \sigma \in Futures_t(\sigma_1) \land \sigma \in Futures_t(\sigma_2)\\
+&\implies \exists \sigma \in \Sigma_t, (Decided_{\Sigma, t}(p,\sigma_1) \implies Decided_{\Sigma, t}(p,\sigma)) \land (Decided_{\Sigma, t}(p,\sigma) \implies \neg Decided_{\Sigma, t}(\neg p,\sigma_2)) \\
+&\implies Decided_{\Sigma, t}(p,\sigma_1) \implies \neg Decided_{\Sigma, t}(\neg p, \sigma_2) \\
+&\iff \neg Decided_{\Sigma, t}(p,\sigma_1) \lor \neg Decided_{\Sigma, t}(\neg p, \sigma_2) \\
+&\iff \neg (Decided_{\Sigma, t}(p,\sigma_1) \land Decided_{\Sigma, t}(\neg p, \sigma_2))
+\end{align}
+\end{proof}
+
+Note the contrapositive of this theorem, which shows that the existence of nodes at two states with inconsistent decisions implies that there are more than $t$ weight of validators equivocating:
+
+$$
+\exists p \in P_\Sigma,~ Decided_{\Sigma, t}(p,\sigma_1) \land Decided_{\Sigma, t}(\neg p, \sigma_2) \implies  F(\sigma_1 \cup \sigma_2) > t
+$$
+
+Unfortunately, the two-party consensus safety result is not sufficient to guarantee the consistency of decisions made by more than 2 parties. To see this, consider a triple of properties $p$, $q$, $r$ such that $p~ \land~ q \implies \neg r$. If three nodes decide on $p$, $q$ and $r$ respectively, then they will have made inconsistent decisions, although they may be consistent pairwise. We therefore need to understand inconsistent decisions in a more general way than we considered for the two-party consensus safety result, where looking at properties and their negations was sufficient.
+
+We will say that properties are ``inconsistent'' if, for all protocol states, their conjunction is false:
+
+\begin{defn}[Inconsistency of properties of protocol states]
+$$ Inconsistent_\Sigma : \mathcal{P}(P_\Sigma) \to \{True, False\}$$
+$$ Inconsistent_\Sigma(Q): \Leftrightarrow \forall \sigma \in \Sigma, \bigwedge_{q \in Q} q(\sigma) = False $$
+\end{defn}
+
+Then we will say that properties are ``consistent" if they are not inconsistent:
+\begin{align}
+\neg Inconsistent_\Sigma(Q) \iff \neg (&\forall \sigma \in \Sigma, \bigwedge_{q \in Q} q(\sigma) = False) \\
+\iff &\exists \sigma \in \Sigma, \bigwedge_{q \in Q} q(\sigma) = True \\
+\iff &\exists \sigma \in \Sigma, \forall q \in Q, q(\sigma)
+\end{align}
+
+Which is to say that a set of properties is consistent if there is at least one protocol state that satisifies each of them:
+
+\begin{defn}[Consistency of properties of protocol states]
+$$ Consistent_\Sigma : \mathcal{P}(P_\Sigma) \to \{True, False\}$$
+$$ Consistent_\Sigma(Q): \Leftrightarrow \exists \sigma \in \Sigma, \forall q \in Q, ~ q(\sigma)$$
+\end{defn}
+
+The $n$-party consensus safety result will show the consistency of \emph{all} the decided properties in \emph{any} of the states of our $n$ nodes, if there are not more than $t$ equivocation faults by weight. So, we need to define a function that collects all the decisions from protocol states:
+
+\begin{defn}[Decisions on properties of protocol states]
+$$ Decisions_{\Sigma,t} : \Sigma \to \mathcal{P}(P_\Sigma)$$
+$$ Decisions_{\Sigma,t}(\sigma)= \{ p \in P_\Sigma: Decided_{\Sigma, t}(p,\sigma) \}.$$
+\end{defn}
+
+Now, we state the $n$-party consensus safety result, that the decided properties are consistent (if there aren't too many faults):
+
+\begin{thm}[$n$-party consensus safety for properties of protocol states]
+\label{thm:nparty_consensus_safety}
+$\forall \sigma_i \in \Sigma_t$,
+$$
+F(\bigcup_{i=1}^n \sigma_i) \leq t \implies Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i))
+$$
+\end{thm}
+
+\begin{proof}
+\begin{align}
+F(\bigcup_{i=1}^n \sigma_i) \leq t &\implies \bigcap_{i=1}^n Futures_t(\sigma_i) \neq \emptyset \\
+&\iff \exists \sigma \in \Sigma_t, \sigma \in \bigcap_{i = 1}^n Futures_t(\sigma_i) \\
+&\iff \exists \sigma \in \Sigma_t, \bigwedge_{i = 1}^n \sigma \in Futures_t(\sigma_i) \\
+&\iff \exists \sigma \in \Sigma_t, \bigwedge_{i = 1}^n \sigma \in Futures_t(\sigma_i)  \\
+&\land \bigwedge_{j = 1}^n \sigma \in Futures_t(\sigma_j) \implies (\forall p \in P_\Sigma, Decided_{\Sigma, t}(p,\sigma_j) \implies Decided_{\Sigma, t}(p, \sigma)) \\
+&\implies \exists \sigma \in \Sigma_t,\bigwedge_{i = 1}^n \forall p \in P_\Sigma, Decided_{\Sigma, t}(p,\sigma_i) \implies Decided_{\Sigma, t}(p, \sigma) \\
+&\implies \exists \sigma \in \Sigma_t,\bigwedge_{i = 1}^n \forall p \in Decisions_{\Sigma,t}(\sigma_i), Decided_{\Sigma, t}(p,\sigma_i) \implies Decided_{\Sigma, t}(p, \sigma)\\
+&\iff \exists \sigma \in \Sigma_t, \bigwedge_{i = 1}^n \forall p \in Decisions_{\Sigma,t}(\sigma_i), Decided_{\Sigma, t}(p, \sigma)\\
+&\iff \exists \sigma \in \Sigma_t, \forall p \in \bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i), Decided_{\Sigma, t}(p, \sigma)\\
+&\implies \exists \sigma \in \Sigma_t, \forall p \in \bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i), p(\sigma)\\
+%&\implies \exists \sigma \in \Sigma, \forall p \in Decisions_{\Sigma,t}(\sigma_i), p(\sigma)\\
+&\iff Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i))
+\end{align}
+\end{proof}
+
+
+\iffalse
+\begin{proof}
+Let %$$\sigma= \cup_i \sigma_i \in \cap_i Futures_t(\sigma_i)$$
+$ \sigma=\bigcup_{i=1}^n \sigma_i \in \bigcap_{i=1}^n Futures_t(\sigma_i)$. For any $i$, for any $p \in Decisions_{\Sigma,t}(\sigma_i)$, we have that $Decided_{\Sigma, t}(p,\sigma)$ from lemma \ref{lem:forw_safe}.
+ We have that $Decisions_{\Sigma,t}(\sigma_1,\sigma_2,\dots,\sigma_n)\subseteq Decisions_{\Sigma,t}(\sigma)$.
+Hence $\mathcal{E}(\sigma)$ is a set of consensus values that satisfies all properties $p \in Decisions_{\Sigma,t}(\sigma_1,\sigma_2,\dots,\sigma_n)$. Therefore $\exists c \in \mathcal{C}, \forall p \in Decisions_{\Sigma,t}(\sigma_1,\sigma_2,\dots,\sigma_n)~ p(c)$.
+\end{proof}
+\fi
+
+Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equiocating:
+$$
+\neg Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)) \implies F(\bigcup_{i=1}^n \sigma_i) > t
+$$
+
+This concludes the consensus safety proof for decisions on properties of protocol states. We will now show how we can leverage this consensus safety theorem and the estimator to allow nodes to make consistent decisions on properties of consensus values.
+
+\subsubsection{Guaranteeing Consistent Decisions on Properties of Consensus Values}
+
+We will define properties of consensus values as the maps from consensus values to $True$ or $False$:
+
+\begin{defn}[Properties of consensus values]
+$$
+P_{\mathcal{C}} = \{ f \in \{True, False\}^\mathcal{C} \}
+$$
+\end{defn}
+
+For every property of consensus values there is a naturally corresponding property of protocol states, which is satisfied (by a protocol state) if the property of consensus holds for all values of the estimator (at that protocol state):
+
+\begin{defn}[H, naturally corresponding property of protocol states]
+\begin{align}
+H&: P_{\mathcal{C}}  \to P_\Sigma \\
+H(p) &:\Leftrightarrow \lambda \sigma . \forall c \in \mathcal{E}(\sigma), p(c)
+\end{align}
+\end{defn}
+
+For example, if we have an estimator for a binary consensus protocol, which has function signature $\mathcal{E}: \Sigma \to \mathcal{P}(\{0,1\})\setminus \emptyset$, and the property of consensus values $p \in P_{\{0, 1\}}$ with $p(0) = True$ and $p(1) = False$, then $H(p)$ is defined to be satisifed by a protocol state $\sigma$ if $\mathcal{E}(\sigma) = \{0\}$, but not if $\mathcal{E}(\sigma) = \{1\}$ or $\mathcal{E}(\sigma) = \{0, 1\}$.
+
+We will define the consistency of properties of consensus values in the same way that we defined consistency of properties of protocol states, namely that they are consistent if there is a value of the consensus that satisifes all of them:
+
+\begin{defn}[Consistency of properties of the consensus]
+$$Consistent_{\mathcal{C}} : \mathcal{P}(P_{\mathcal{C}}) \to \{True, False\}$$
+$$Consistent_{\mathcal{C}}(Q): \Leftrightarrow \exists c \in \mathcal{C}, \forall q \in Q, ~ q(c)$$
+\end{defn}
+
+We will now show an important lemma, that if properties of protocol states that correspond to properties of consensus values are consistent, then these properties of consensus values are also consistent:
+
+\begin{lemma}
+$\forall p_i \in P_{\mathcal{C}}$,
+$$
+Consistent_\Sigma(\{H(p_1), H(p_2),\dots,H(p_n)\}) \implies Consistent_{\mathcal{C}}(\{p_1,p_2,\dots,p_n\})
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+&Consistent_\Sigma(\{H(p_1), H(p_2), \dots, H(p_n)\}) \\
+\iff &\exists \sigma \in \Sigma, \forall i \in \{1,2,\dots,n\}, H(p_i)(\sigma) \\
+\iff &\exists \sigma \in \Sigma, \forall i \in \{1,2,\dots,n\} \forall c \in \mathcal{E}(\sigma), p_i(c) \\
+\iff &\exists \sigma \in \Sigma, \forall c \in \mathcal{E}(\sigma), \forall i \in \{1,2,\dots,n\}, p_i(c) \\
+\implies &\exists \sigma \in \Sigma, \exists c \in \mathcal{E}(\sigma), \forall i \in \{1,2,\dots,n\}, p_i(c) \\
+\iff &\exists c \in \mathcal{C}, \forall i \in \{1,2,\dots,n\}, p_i(c) \\
+\iff &Consistent_{\mathcal{C}}(\{p_1,p_2,\dots,p_n\})
+\end{align}
+\end{proof}
+
+We will use this lemma to ensure the consistency of properties of consensus values that correspond to decided properties of protocol states (via $H$). We will call these properties ``the decided properties of consensus values":
+
+\begin{defn}[Decided on properties of consensus values]
+\begin{align}
+Decided_{\mathcal{C},t}&: P_{\mathcal{C}} \times \Sigma_t \to \{True, False\} \\
+Decided_{\mathcal{C},t}(p, \sigma)&= Decided_{\Sigma,t}(H(p), \sigma)
+\end{align}
+\end{defn}
+
+In addition to deciding on properties of protocol states, nodes can also make decisions on properties of consensus values.
+
+\begin{defn}[Decisions on properties of consensus values]
+$$Decisions_{\mathcal{C},t} : \Sigma_t \to \mathcal{P}(P_{\mathcal{C}})$$
+$$Decisions_{\mathcal{C},t}(\sigma) = \{q \in P_{\mathcal{C}}: H(q) \in Decisions_{\Sigma,t}(\sigma)\}$$
+\end{defn}
+
+We are finally able to give our last consensus safety theorem, which shows that decisions on properties of consensus values are consistent if there aren't too many faults:
+
+\begin{thm}[$n$-party consensus safety for properties of the consensus]
+$\forall \sigma_i \in \Sigma_t$,
+$$F(\bigcup_{i=1}^n \sigma_i) \leq t \implies Consistent_{\mathcal{C}}(\bigcup_{i=1}^n Decisions_{\mathcal{C},t}(\sigma_i))$$
+\end{thm}
+
+
+\begin{proof}
+\begin{align}
+F(\bigcup_{i=1}^n \sigma_i) \leq t\\
+\implies&   Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)) \\
+\implies&   Consistent_\Sigma(\{ p \in \bigcup_{i=1}^n  Decisions_{\Sigma,t}(\sigma_i): \exists q \in P_{\mathcal{C}}, p = H(q)\})\\
+\iff&   Consistent_\Sigma(\bigcup_{q \in P_{\mathcal{C}} ~:~ H(q) \in \bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)} \{H(q)\} )\\
+%\implies& \forall H  \{H(p_1), H(p_2), \dotsH(p_n)\} \in Decisions_{\Sigma,t}(\{ \sigma_1,\sigma_2, \sigma_3,\dots,\sigma_n  \} )),\\
+% &~~~~~~~~~~~~~~ Consistent_\Sigma(\{H(p_1), H(p_2), \dotsH(p_n)\}) \\
+\iff& Consistent_{\mathcal{C}}(\{q \in P_{\mathcal{C}}: H(q) \in \bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)\}) \\
+\iff& Consistent_{\mathcal{C}}(\bigcup_{i=1}^n Decisions_{\mathcal{C},t}(\sigma_i))
+\end{align}
+\end{proof}
+
+And once again, we note the contrapositive of this theorem, which shows that if there are inconsistent decisions on properties of the consensus, then it must be that more than $t$ weight of validators are Byzantine and equivocating:
+
+$$
+\neg Consistent_{\mathcal{C}}(\bigcup_{i=1}^n Decisions_{\mathcal{C},t}(\sigma_i)) \implies F(\bigcup_{i=1}^n \sigma_i) > t
+$$
+
+This concludes the safety proof for the minimal CBC Casper family of protocols.
+
+\pagebreak
+\input{examples.tex}
+
+\pagebreak
+\input{conclusion.tex}
+
+\bibliography{ethereum}
+\bibliographystyle{IEEEtran}
+
+\pagebreak
+\input{appendix.tex}
+
+\iffalse
+\input{technical-lemmas.tex}
+
+\input{safety-oracle.tex}
+
+\input{liveness.tex}
+\fi
+
+
+\end{document}

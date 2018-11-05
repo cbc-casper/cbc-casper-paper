@@ -1,0 +1,1101 @@
+\section{Example Protocols}
+\subsection{Preliminary Definitions}
+
+We need to develop a bit of language before giving example protocols. Specifically, we are going to define the terms required for us to talk about the estimates of the latest messages from non-equivocating validators.
+
+The observed validators in a set of messages are all validators who have sent at least one of those messages:
+
+\begin{defn}[Observed validators]
+\begin{align*}
+Observed:& \mathcal{P}(M) \to \mathcal{P}(\mathcal{V}) \\
+Observed(\sigma) =& \{ Sender(m) : m \in \sigma \} \\
+\end{align*}
+\end{defn}
+\begin{defn}
+\begin{align*}
+Later:&M \times \mathcal{P}(M) \to \mathcal{P}(M) \\
+Later(m, \sigma) =& \{m' \in \sigma :  m \in Justification(m') \}
+\end{align*}
+\end{defn}
+
+The messages from a validator in a set of messages are all messages such that the sender of the message is that validator:
+
+\begin{defn}[Message From a Sender]
+\begin{align*}
+From\_Sender:& \mathcal{V} \times \mathcal{P}(M) \to \mathcal{P}(M) \\
+From\_Sender(v, \sigma) =& \{m \in \sigma : Sender(m) = v \}
+\end{align*}
+\end{defn}
+
+Similarly, we can define the messages from a group:
+
+\begin{defn}[Messages From a Group]
+\begin{align*}
+From\_Group:& \mathcal{P}(\mathcal{V}) \times \mathcal{P}(M) \to \mathcal{P}(M) \\
+From\_Group(V, \sigma) =& \{m \in \sigma : Sender(m) \in V \} \\
+\end{align*}
+\end{defn}
+
+
+
+\begin{defn}
+\begin{align*}
+Later\_From:& M \times \mathcal{V} \times \mathcal{P}(M) \\
+Later\_From(m, v, \sigma) =& Later(m, \sigma) \cap From\_Sender(v, \sigma)
+\end{align*}
+\end{defn}
+
+\iffalse
+\begin{lemma}[Monotonicity of Later\_From]
+$$
+m' \in Later\_From(m,v,\sigma) \implies Later\_From(m', v, \sigma) \subseteq Later\_From(m, v, \sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align*}
+m' \in Later\_From(m, v, \sigma) &\implies m' \in Later(m, \sigma) \cap From\_Sender(v, \sigma)\\
+&\implies m' \in Later(m, \sigma) \\
+&\implies m \in Justification(m') \\
+&\implies m \in Justification(m') \land \forall m'' \in Later\_From(m',v,\sigma), \\
+&~~~~~m'' \in Later(m', \sigma)
+\\
+&\implies m \in Justification(m') \land \forall m'' \in Later\_From(m',v,\sigma), \\
+&~~~~~m' \in Justification(m'')
+\\
+&\implies m \in Justification(m') \land \forall m'' \in Later\_From(m',v,\sigma), \\
+&~~~~~Justification(m') \subseteq Justification(m'')
+\\
+&\implies \forall m'' \in Later\_From(m',v,\sigma), m \in Justification(m') \\
+&~~~~~\land Justification(m') \subseteq Justification(m'')
+\\
+&\implies \forall m'' \in Later\_From(m',v,\sigma), m \in Justification(m'') \\
+&\implies \forall m'' \in Later\_From(m',v,\sigma), m'' \in Later(m, \sigma) \\
+&\implies \forall m'' \in Later\_From(m',v,\sigma), m'' \in Later(m, \sigma) \land  m'' \in From\_Sender(v, \sigma) \\
+&\implies \forall m'' \in Later\_From(m',v,\sigma), m'' \in Later(m, \sigma) \cap From\_Sender(v, \sigma) \\
+&\implies \forall m'' \in Later\_From(m',v,\sigma), m'' \in Later\_From(m, v, \sigma) \\
+&\implies Later\_From(m',v,\sigma) \subseteq Later\_From(m,v,\sigma)
+\end{align*}
+\end{proof}
+\fi
+
+\begin{defn}[Latest Message]
+\begin{align*}
+L_M:& \mathcal{P}(M) \to (\mathcal{V} \to \mathcal{P}(M)) \\
+L_M(\sigma)(v) =& \{m \in From\_Sender(v, \sigma):  Later\_From(m, v, \sigma) = \emptyset \}
+\end{align*}
+\end{defn}
+
+\begin{defn}[Latest message driven estimator]
+\begin{align*}
+Latest\_Message\_Driven:& \mathcal{P}(C)^\Sigma \to \{True, False\} \\
+Latest\_Message\_Driven(\mathcal{E}) :\Leftrightarrow& \exists \hat{\mathcal{E}} \in \mathcal{P}(C)^{\mathcal{P}(M)^\mathcal{V}}, ~~\mathcal{E} = \hat{\mathcal{E}} \circ L_M
+\end{align*}
+\end{defn}
+
+\begin{defn}[Latest Estimates]
+\begin{align*}
+L_E:&\Sigma \to (\mathcal{V} \to \mathcal{P}(\mathcal{C})) \\
+L_E(\sigma)(v) =& \{Estimate(m): m \in L_M(\sigma)(v)\} \\
+\end{align*}
+\end{defn}
+
+\begin{defn}[Latest message driven estimator]
+\begin{align*}
+Latest\_Estimate\_Driven:& \mathcal{P}(C)^\Sigma \to \{True, False\} \\
+Latest\_Estimate\_Driven(\mathcal{E}) :\Leftrightarrow& \exists \hat{\mathcal{E}} \in \mathcal{P}(C)^{\mathcal{P}(C)^\mathcal{V}}, ~~\mathcal{E} = \hat{\mathcal{E}} \circ L_E
+\end{align*}
+\end{defn}
+
+\begin{lemma}[Non-equivocating validators have at most one latest message]
+$\forall v \in \mathcal{V}$,
+$$
+v \notin E(\sigma) \implies |L_M(\sigma)(v)| \leq 1
+$$
+\end{lemma}
+
+
+\begin{proof}
+We will prove the contrapositive , $|L_M(\sigma)(v)| > 1 \implies v \in E(\sigma)$
+\begin{align*}
+|L_M(\sigma)(v)| > 1 &\implies |\{m \in From\_Sender(v, \sigma) : Later\_From(m, v, \sigma) = \emptyset \}| > 1
+\\
+&\implies \exists m_1 \in From\_Sender(v, \sigma), \exists m_2 \in From\_Sender(v, \sigma), m_1 \neq m_2\\
+&~~~\land Later\_From(m_1, v, \sigma) = \emptyset \land Later\_From(m_2,  v, \sigma) = \emptyset
+\\
+&\iff \exists m_1 \in From\_Sender(v, \sigma), \exists m_2 \in From\_Sender(v, \sigma), m_1 \neq m_2\\
+&~~~\land Later(m_1, \sigma) \cap From\_Sender(v, \sigma) = \emptyset \land Later(m_2, \sigma) \cap From\_Sender(v, \sigma) = \emptyset
+\\
+&\implies \exists m_1 \in From\_Sender(v, \sigma), \exists m_2 \in From\_Sender(v, \sigma), m_1 \neq m_2\\
+&~~~\land \nexists m^* \in From\_Sender(v, \sigma), m^* \in Later(m_1, \sigma) \\
+&~~~\land \nexists m^{**} \in From\_Sender(v, \sigma), m^{**} \in Later(m_2, \sigma)
+\\
+&\implies \exists m_1 \in From\_Sender(v, \sigma), \exists m_2 \in From\_Sender(v, \sigma), m_1 \neq m_2\\
+&~~~\land \nexists m^* \in From\_Sender(v, \sigma), m_1 \in Justification(m^*) \\
+&~~~\land \nexists m^{**} \in From\_Sender(v, \sigma), m_2 \in Justification(m^{**})
+\\
+&\implies \exists m_1 \in From\_Sender(v, \sigma), \exists m_2 \in From\_Sender(v, \sigma), m_1 \neq m_2\\
+&~~~\land \forall m^* \in From\_Sender(v, \sigma), m_1 \notin Justification(m^*) \\
+&~~~\land \forall m^{**} \in From\_Sender(v, \sigma), m_2 \notin Justification(m^{**})
+\\
+&\implies \exists m_1 \in \sigma : Sender(m_1) = v, \exists m_2 \in \sigma : Sender(m_2) = v, m_1 \neq m_2\\
+&~~~\land m_1 \notin Justification(m_2, \sigma) \land m_2 \notin Justification(m_1, \sigma)
+\\
+&\implies \exists m_1 \in \sigma : Sender(m_1) = v, \exists m_2 \in \sigma : Sender(m_2) = v, \\
+&~~~~~~~Sender(m_1) = Sender(m_2) \land m_1 \neq m_2\\
+&~~~\land m_1 \notin Justification(m_2, \sigma) \land m_2 \notin Justification(m_1, \sigma)
+\\
+&\implies \exists m_1 \in \sigma, \exists m_2 \in \sigma, Sender(m_1) = Sender(m_2) \land m_1 \neq m_2\\
+&~~~\land m_1 \notin Justification(m_2, \sigma) \land m_2 \notin Justification(m_1, \sigma)
+\\
+&\iff v \in E(\sigma)
+\end{align*}
+\end{proof}
+
+
+\begin{defn}[$\preceq$]
+\begin{align*}
+\cdot \preceq \cdot &: M \times M \to \{True, False\} \\
+m_1 \preceq m_2 &:\Leftrightarrow |Justification(m_1)| \geq |Justification(m_2))|
+\end{align*}
+\end{defn}
+
+
+\begin{lemma}
+$\forall \sigma \in \Sigma, \forall S \subseteq \sigma$
+
+$(S, \preceq)$ is a total order.
+\end{lemma}
+
+\begin{proof}
+Starting from the fact that all protocol states are finite, we show that every justification of every message in $\sigma$ (and in therefore in $S$) is finite.
+\begin{align*}
+&\forall \sigma \in \Sigma, \exists n \in \mathbb{N}, n = |\sigma| \\
+&\implies \forall \sigma \in \Sigma, \exists n \in \mathbb{N}, n = |\sigma| \\
+&~~~~\land \forall m \in \sigma, Justification(m) \subseteq \sigma
+\\
+&\implies \forall \sigma \in \Sigma, \exists n \in \mathbb{N}, n = |\sigma| \\
+&~~~~\land \forall m \in \sigma, |Justification(m)| \leq |\sigma|
+\\
+&\implies \forall \sigma \in \Sigma, \exists n \in \mathbb{N}, n = |\sigma| \\
+&~~~~\land \forall m \in \sigma, |Justification(m)| \leq n
+\\
+&\implies \forall \sigma \in \Sigma, \exists n \in \mathbb{N}, n = |\sigma| \\
+&~~~~\land \forall m \in \sigma, \exists n' \in \mathbb{N}, n' = |Justification(m)|
+\\
+&\implies \forall \sigma \in \Sigma, \\
+&~~~~~\forall m \in \sigma, \exists n' \in \mathbb{N}, n' = |Justification(m)|
+\\
+&\implies \forall \sigma \in \Sigma, \forall S \subseteq \sigma, \\
+&~~~~~\forall m \in \sigma, \exists n' \in \mathbb{N}, n' = |Justification(m)|
+\\
+&\implies \forall \sigma \in \Sigma, \forall S \subseteq \sigma, \\
+&~~~~~\forall m \in S, \exists n' \in \mathbb{N}, n' = |Justification(m)|
+\end{align*}
+
+This means that
+
+$$
+\exists f \in \mathbb{N}^S, \forall m \in S, f(m) = |Justification(m)|
+$$
+
+And we have the following equivalence for such a function $f$:
+
+$$
+m_1 \preceq m_2 \iff |Justification(m_1)| \geq |Justification(m_2))| \iff f(m_1) \geq f(m_2)
+$$
+
+Therefore, if $(Im(f), \geq)$ is a total order, then so is $(S, \preceq)$. Note that $Im(f)$ denoted the image of $f$, $\{n \in \mathbb{N}: \exists m \in S, f(m) = n\}$. Furthermore, we know that $(\mathbb{N}, \geq)$ is a total order, and it follows that $(Im(f), \geq)$ is a total order, which in turn means that $(S, \preceq)$ is a total order.
+\end{proof}
+
+\begin{lemma}[Monotonicity of Justifications]
+  $$
+  m' \in Later(m, \sigma) \Longrightarrow Justification(m) \subseteq Justification(m')
+  $$
+\end{lemma}
+
+\begin{proof}
+  \begin{align*}
+    &m' \in Later(m, \sigma) \\
+    \Longleftrightarrow& m' \in \{m^* \in \sigma :  m \in Justification(m^*) \} \\
+    \Longrightarrow& m \in Justification(m') \\
+    \Longrightarrow& \exists \sigma' \in \Sigma, m \in \sigma', \sigma' = Justification(m') \\
+    \Longrightarrow& \exists \sigma' \in \Sigma, m \in \sigma', \sigma' = Justification(m') \land Justification(m) \subseteq \sigma' \\
+    \Longrightarrow& \exists \sigma' \in \Sigma, m \in \sigma', Justification(m) \subseteq Justification(m') \\
+    \Longrightarrow& Justification(m) \subseteq Justification(m') \\
+  \end{align*}
+\end{proof}
+
+\begin{lemma}
+The minimal elements in $(From\_Sender(v, \sigma), \preceq)$ are the latest messages of validator $v$.
+\end{lemma}
+
+Let $m$ be a minimal element in $(From\_Sender(v, \sigma), \preceq)$. Then $m$ is a latest message iff $\{m \in From\_Sender(v, \sigma):  Later\_From(m, v, \sigma) = \emptyset \}$
+
+\begin{proof}(By Contradiction)
+  Assume that a minimal element $m$ is not a latest message.
+\begin{align*}
+  & \forall m' \in From\_Sender(v, \sigma), m \preceq m' \land m \notin L_M(\sigma)(v)
+  \\
+  \Longleftrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \land m \notin \{m'' \in From\_Sender(v, \sigma): Later\_From(m'', v, \sigma) = \emptyset\}
+  \\
+  \Longleftrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \land Later\_From(m, v, \sigma) \not = \emptyset
+  \\
+  \Longleftrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \land \exists m^* \in Later\_From(m, v, \sigma)
+  \\
+  \Longleftrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \land \exists m^* \in Later\_From(m, v, \sigma),  m^* \in Later(m, \sigma) \cap From\_Sender(v, \sigma)
+  \\
+  \Longleftrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \land \exists m^* \in Later\_From(m, v, \sigma), m^* \in Later(m, \sigma)
+  \\
+  \Longleftrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \\ &\land \exists m^* \in Later\_From(m, v, \sigma), m^* \in Later(m, \sigma) \land m \in Justification(m^*)
+  \\
+  \Longrightarrow& \forall m' \in From\_Sender(v, \sigma), m \preceq m' \\ &\land \exists m^* \in Later\_From(m, v, \sigma), Justification(m) \subseteq Justification(m^*) \land m \in Justification(m^*)
+  \\
+  \Longrightarrow& \forall m' \in From\_Sender(v, \sigma), |Justification(m)| \geq |Justification(m'))| \\ &\land \exists m^* \in Later\_From(m, v, \sigma), Justification(m) \subseteq Justification(m^*) \land m \in Justification(m^*)
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), Justification(m) \subseteq Justification(m^*)  \land m \in Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), Justification(m) \subseteq Justification(m^*)  \land \{m\} \subseteq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), Justification(m) \cup \{m\} \subseteq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq Justification(m^*) \\ &\land Justification(m) \cap \{m\} = \emptyset \land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq Justification(m^*) \\ &\land |Justification(m) \cap \{m\}| = 0 \land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| \leq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \\
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| \leq Justification(m^*) \land |\{m\}| \geq 1 \\ &\land |Justification(m)| \geq |Justification(m^*)|
+\end{align*}
+
+This leads to a contradiction in these three inequalities. Therefore, a minimal message in $From\_Sender(v, \sigma)$ is a latest message from validator $v$.
+\end{proof}
+
+\begin{lemma}
+There is at least one minimal element in $(From\_Sender(v, \sigma), \preceq)$ for a $v \in Observed(\sigma)$.
+\end{lemma}
+
+\begin{proof}
+  \begin{align*}
+    &v \in Observed(\sigma)
+    \\
+    \Longrightarrow& v \in \{ Sender(m) : m \in \sigma \}
+    \\
+    \Longrightarrow& \exists m \in \sigma, Sender(m) = v
+    \\
+    \Longrightarrow& \exists m \in \{m \in \sigma: Sender(m) = v\}
+    \\
+    \Longrightarrow& \exists m \in From\_Sender(v, \sigma)
+    \\
+    \Longrightarrow& From\_Sender(v, \sigma) \not = \emptyset
+  \end{align*}
+
+  By Well-Ordering Principle, a non-empty countable total order always has a minimal element.
+\end{proof}
+
+Hence, observed validators have latest messages, i.e., $\forall \sigma \in \Sigma, \forall v \in \mathcal{V},\\ v \in Observed(\sigma) \implies |L_M(\sigma)(v)| \geq 1
+$
+
+
+\begin{lemma}[Observed non-equivocating validators have one latest messages]
+$\forall \sigma \in \Sigma, \forall v \in \mathcal{V}$
+$$
+v \in Observed(\sigma) \land v \notin E(\sigma) \implies |L_M(\sigma)(v)| = 1
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align*}
+&v \in Observed(\sigma) \land v \notin E(\sigma)  \\
+&\implies |L_M(\sigma)(v)| \geq 1 \land |L_M(\sigma)(v)| \leq 1 \\
+&\implies |L_M(\sigma)(v)| = 1
+\end{align*}
+\end{proof}
+
+\begin{defn}[Latest messages from non-Equivocating validators]
+$$
+L^H_M:\Sigma \to (\mathcal{V} \to \mathcal{P}(M))
+$$
+\[ L^H_M(\sigma)(v) = \left\{
+\begin{array}{ll}
+      \emptyset& \text{ for } v \in E(\sigma) \\
+      L_M(\sigma)(v)& \text{ otherwise }
+\end{array}
+\right. \]
+\end{defn}
+
+Note that the map returned by this function has values $L^H_M(\sigma)(v) = \emptyset$ for any validators who are equivocating in $\sigma$ or who don't have any messages in $\sigma$.
+
+
+\begin{defn}[Latest honest message driven estimator]
+\begin{align*}
+Latest\_Honest\_Message\_Driven:& \mathcal{P}(C)^\Sigma \to \{True, False\} \\
+Latest\_Honest\_Message\_Driven(\mathcal{E}) :\Leftrightarrow& \exists \hat{\mathcal{E}} \in \mathcal{P}(C)^{\mathcal{P}(M)^\mathcal{V}}, ~~\mathcal{E} = \hat{\mathcal{E}} \circ L^H_M
+\end{align*}
+\end{defn}
+
+
+\begin{defn}[Latest Estimates from non-Equivocating validators]
+$$
+L^H_E:\Sigma \to (\mathcal{V} \to \mathcal{P}(\mathcal{C}))
+$$
+$$
+L^H_E(\sigma)(v) = \{Estimate(m) : m \in L^H_M(\sigma)(v)\}
+$$
+\end{defn}
+
+As above, $L^H_E(\sigma)(v) = \emptyset$ for validators $v$ who are equivocating or missing in $\sigma$.
+
+\begin{defn}[Latest honest estimate driven estimator]
+\begin{align*}
+Latest\_Honest\_Message\_Driven:& \mathcal{P}(C)^\Sigma \to \{True, False\} \\
+Latest\_Honest\_Message\_Driven(\mathcal{E}) :\Leftrightarrow& \exists \hat{\mathcal{E}} \in \mathcal{P}(C)^{\mathcal{P}(M)^\mathcal{V}}, ~~\mathcal{E} = \hat{\mathcal{E}} \circ L^H_E
+\end{align*}
+\end{defn}
+
+All the example protocols we will give will have latest honest estimate driven estimators.
+
+\iffalse
+We define ``!", an operator used to return the single element of a singleton set:
+\begin{defn}
+$$
+!: \mathcal{P}(X) \to X
+$$
+$$
+!(A) = a \in A : \forall b \in A, b = a
+$$
+\end{defn}
+
+Note that it is not defined when its argument is not singleton (i.e. when it is a multi-element or empty set).
+
+\begin{defn}[Properties of Consensus Values]
+\begin{align*}
+P_{\mathcal{C}} = \{True, False\}^{\mathcal{C}}
+\end{align*}
+\end{defn}
+\fi
+
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+
+
+\subsection{Casper the Friendly Binary Consensus}
+
+\begin{defn}[Argmax]
+\begin{align*}
+Argmax &: \mathcal{P}(a) \times (a \to \mathbb{R}) \to \mathcal{P}(a) \\
+Argmax(X, f) &= \{x \in X : \nexists x' \in X, f(x') > f(x)\}
+\end{align*}
+where $a$ is a type variable.
+\end{defn}
+
+For notational convenience, we may write $Argmax(X, f)$ as $\argmax\limits_{x \in X} f(x)$.
+
+
+\begin{defn}[Score]
+\begin{align*}
+Score &: \{0, 1\} \times \Sigma \to \mathbb{R} \\
+Score(x, \sigma) &= \sum_{v \in V: x \in L^H_E(\sigma)(v)} \mathcal{W}(v)
+\end{align*}
+\end{defn}
+
+
+\begin{defn}[Casper the Friendly Binary Consensus]
+\begin{align*}
+\mathcal{C} &= \{0, 1\} \\
+\mathcal{E}(\sigma) &= \argmax\limits_{c \in C} ~Score(c, \sigma)
+\end{align*}
+\end{defn}
+
+
+\begin{defn}[Example non-trivial properties of this binary consensus protocol]
+$$
+P = \{p \in P_{\mathcal{C}} : \exists ! c \in C, p(c) = True\}
+$$
+\end{defn}
+
+\iffalse
+
+\begin{thm}
+$\forall p \in P$,
+$$
+Max\_Driven(p)
+$$
+\end{thm}
+
+\begin{proof}
+We say that $p(i) = True \land p(1 - i) = False$
+\begin{align*}
+&Weight(Agreeing(p, \sigma)) > Weight(Disagreeing(p, \sigma)) \\
+&\implies Weight(\{v \in \mathcal{V} : \exists c \in L^H_E(\sigma)(v), p(c)\}) > Weight(\{v \in \mathcal{V} : \exists c \in L^H_E(\sigma)(v), \neg p(c)\}) \\
+&\implies \sum_{v \in \mathcal{V} : \exists c \in L^H_E(\sigma)(v), p(c)} \mathcal{W}(v) > \sum_{v \in \mathcal{V} : \exists c \in L^H_E(\sigma)(v), \neg p(c)} \mathcal{W}(v) \\
+&\implies \sum_{v \in \mathcal{V} : i \in L^H_E(\sigma)(v)} \mathcal{W}(v) > \sum_{v \in \mathcal{V} : 1-i \in L^H_E(\sigma)(v)} \mathcal{W}(v) \\
+&\implies \mathcal{E}(\sigma) = \{i\} \\
+&\implies \forall c \in \mathcal{E}(\sigma), p(c) \\
+\end{align*}
+\end{proof}
+\fi
+
+
+\subsection{Casper the Friendly Integer Consensus}
+
+
+\iffalse
+\begin{defn}[Weight Less Than x]
+\begin{align*}
+WLX:& \mathbb{Z} \times \mathcal{P}_{fin}(\mathbb{Z}) \times (\mathbb{Z} \to \mathbb{R}) \to \mathbb{R} \\
+WLX(x, X, W) =& \sum_{x' \in X : x' < x} W(x')
+\end{align*}
+\end{defn}
+
+\begin{defn}[Weight Greater Than x]
+\begin{align*}
+WLX:& \mathbb{Z} \times \mathcal{P}_{fin}(\mathbb{Z}) \times (\mathbb{Z} \to \mathbb{R}) \to \mathbb{R} \\
+WGX(x, X, W) =& \sum_{x' \in X : x' > x} W(x')
+\end{align*}
+\end{defn}
+
+\begin{defn}[Weighted Median]
+\begin{align*}
+Median &: \mathcal{P}(\mathbb{Z}) \times (\mathbb{Z}\to \mathbb{R}) \to \mathcal{P}(\mathbb{Z}) \\
+Median(X, W) &= \{x \in X : WLX(x, X, W) \leq \sum_{x' \in X} W(x')/2 \\
+&~~~~~~~~~~~~~\land WGX(x, X, W) \leq \sum_{x' \in X} W(x')/2\}
+\end{align*}
+\end{defn}
+\fi
+
+\begin{defn}[Weighted Median]
+\begin{align*}
+Median &: \mathcal{P}(\mathbb{Z}) \times (\mathbb{Z}\to \mathbb{R}) \to \mathcal{P}(\mathbb{Z}) \\
+Median(X, W) &= \{x \in X :  \sum_{x' \in X : x' < x} W(x') \leq \sum_{x' \in X} W(x')/2 \\
+&~~~~~~~~~~~~~\land \sum_{x' \in X : x' > x} W(x') \leq \sum_{x' \in X} W(x')/2\}
+\end{align*}
+\end{defn}
+
+\begin{defn}[Score]
+\begin{align*}
+Score &: \mathbb{Z} \times \Sigma \to \mathbb{R} \\
+Score(x, \sigma) &= \sum_{v \in V: x \in L^H_E(\sigma)(v)} \mathcal{W}(v)
+\end{align*}
+\end{defn}
+
+
+\begin{defn}[Casper the Friendly Integer Consensus]
+\begin{align*}
+\mathcal{C} &= \mathbb{Z} \\
+\mathcal{E}(\sigma) &= Median(\cup_{v \in \mathcal{V}} L^H_E(\sigma)(v), \lambda x. Score(x, \sigma))
+\end{align*}
+
+\end{defn}
+
+\begin{defn}[Example non-trivial properties of the integer consensus protocol]
+$$
+P = \{p \in P_{\mathcal{C}} : \exists! z \in \mathcal{C}, p(z) = True\}
+$$
+\end{defn}
+
+
+
+\subsection{Casper the Friendly GHOST}
+
+Greedy Heaviest Observed Sub-Tree\cite{GHOST} is a contruction proposed to tackle reduced security issues in blockchains with fast conformation times. Here, we present a CBC specification for a GHOST-based blockchain fork choice rule.
+
+Starting from a genesis block $g$, we can define all blocks in a blockchain to have a previous block and some block data $D$.
+
+\begin{defn}[Blocks]
+\begin{align*}
+B_0 &= \{g\} \\
+B_n &= B_{n-1} \times D \\
+B &= \bigcup_{i = 0}^{\infty} B_i
+\end{align*}
+\end{defn}
+
+Blocks/blockchains will be the consensus value for blockchain consensus.
+
+Every block in a blockchain has a single previous block.
+
+\begin{defn}[Previous block resolver]
+$$
+Prev: B \to B
+$$
+\[ Prev(b) = \begin{cases}
+  g  &\text{ if $b = g$ }\\
+  b' &\text{ otherwise, if $b = (b', d)$ }\\
+   \end{cases}
+\]
+\end{defn}
+
+\[ Prev(b) = \left\{
+\begin{array}{ll}
+      g& \text{ if $b = g$ } \\
+      Proj_1(b)& \text{ otherwise }
+\end{array}
+\right. \]
+
+
+\begin{defn}[n-cestor: n'th generation ancestor block]
+$$
+n\text{-}cestor : B \times \mathbb{N} \to B\\
+$$
+\[ n\text{-}cestor(b, n) = \left\{
+\begin{array}{ll}
+      b& \text{ if $n = 0$ } \\
+      n\text{-}cestor(Prev(b), n - 1)& \text{ otherwise }
+\end{array}
+\right. \]
+\end{defn}
+
+
+A block is "in the blockchain" of another block if it one of its ancestors.
+
+\begin{defn}[Blockchain membership, $m_1 \downharpoonright m_2$]
+\begin{align*}
+\cdot \downharpoonright \cdot&: B \times B \to \{True, False\} \\
+b_1 \downharpoonright b_2 &:\Leftrightarrow \exists n \in \mathbb{N}, b_1 = n\text{-}cestor(b_2, n)
+\end{align*}
+\end{defn}
+
+We define the ``score'' of a block $b$ in state $\sigma$ as the total weight of validators with latest blocks $b'$ such that $b \downharpoonright b'$.
+
+\begin{defn}[Score of a block]
+\begin{align*}
+Score: M \times \Sigma &\to \mathbb{R} \\
+Score(b, \sigma) &= \sum_{v \in \mathcal{V} : \exists b' \in L^H_E(\sigma)(v), b \downharpoonright b'} \mathcal{W}(v)
+\end{align*}
+\end{defn}
+
+
+The ``children'' of a block $b$ in a protocol state $\sigma$ are the blocks with $b$ as their prevblock.
+
+\begin{defn}
+\begin{align*}
+Children&: M \times \Sigma \to \mathcal{P}(M)\\
+Children(b,\sigma) &= \{b' \in \bigcup_{m \in \sigma} \{Estimate(m)\} : Prev(b') = b\}
+\end{align*}
+\end{defn}
+
+We now have the language required to define the estimator for the blockchain consensus, the Greedy Heaviest-Observed Sub-Tree fork choice rule, or GHOST!
+
+\begin{defn}
+\begin{align*}
+Best\_Children&: B \times \Sigma \to \mathcal{P}(B)\\
+Best\_Children(b,\sigma) &= \argmax\limits_{b' \in Children(b, \sigma)} Score(b', \sigma)
+\end{align*}
+\end{defn}
+
+\begin{defn}
+\begin{align*}
+GHOST&: \mathcal{P}(B) \times \Sigma \to \mathcal{P}(B)\\
+GHOST(\underline{b},\sigma) &= \bigcup\limits_{\substack{b \in \underline{b} ~:\\ Children(b, \sigma) \neq \emptyset}} GHOST(Best\_Children(b,\sigma), \sigma) \\
+&~~~\cup \bigcup\limits_{\substack{b \in \underline{b} ~:\\ Children(b, \sigma) = \emptyset}} \{b\}
+\end{align*}
+\end{defn}
+
+
+\begin{defn}[Casper the Friendly Ghost]
+\begin{align*}
+\mathcal{C} &= B \\
+\mathcal{E}(\sigma) &= GHOST(\{g\}, \sigma)
+\end{align*}
+\end{defn}
+
+\iffalse
+We can define GHOST differently.
+
+\begin{defn}
+\begin{align*}
+Chain&: B \to \mathcal{P}(B)\\
+Chain(g) &= \{\} \\
+Chain(b) &= \{b\} \cup Chain(Prev(b))
+\end{align*}
+\end{defn}
+
+\begin{defn}
+\begin{align*}
+GHOST&: \Sigma \to \mathcal{P}(B)\\
+GHOST(\sigma) &= \{b \in \sigma : Children(b, \sigma) = \emptyset \land \forall b' \in Chain(b), \forall b'' \in Children(Prev(b), \sigma), Score(b') \geq Score(b'')\}
+\end{align*}
+\end{defn}
+\fi
+
+
+\begin{defn}[Example non-trivial properties of consensus values]
+$$
+P = \{p \in P_{\mathcal{C}} : \exists! b \in \mathcal{C}, \forall b' \in \mathcal{C}, (b \downharpoonright b' \implies p(b') = True) \land (\neg(b \downharpoonright b') \implies p(b') = False)\}
+$$
+\end{defn}
+
+
+\iffalse
+\begin{thm}
+$\forall p \in P$,
+$$
+Max\_Weight(p)
+$$
+\end{thm}
+\fi
+
+
+
+\subsection{Casper the Friendly CBC Finality Gadget}
+
+Finality gadgets are consensus protocols on the blocks of an underlying blockchain, which has its own block structure and fork choice rule. Casper the Friendly Finality Gadget\cite{vitalik2017casperffg} describes one such construction of a finality gadget.
+
+Here, we will describe the underlying blockchain and the conditions it must satisfy, before showing how to layer a CBC Casper finality gadget on top, namely in the form of a change to the blockchains forkchoice.
+
+\begin{defn}[The underlying blockchain]
+We assume the blockchain has blocks:
+
+
+Starting from a genesis block $g$, we can define all blocks in a blockchain to have a previous block and some block data $D$.
+
+\begin{defn}[Blocks]
+\begin{align*}
+B_0 &= \{g\} \\
+B_n &= B_{n-1} \times D \\
+B &= \bigcup_{i = 0}^{\infty} B_i
+\end{align*}
+\end{defn}
+
+Blocks/blockchains will be the consensus value for blockchain consensus.
+
+Every block in a blockchain has a single previous block.
+
+\begin{defn}[Previous block resolver]
+$$
+Prev: B \to B
+$$
+\[ Prev(b) = \begin{cases}
+  g  &\text{ if $b = g$ }\\
+  b' &\text{ otherwise, if $b = (b', d)$ }\\
+   \end{cases}
+\]
+\end{defn}
+
+\[ Prev(b) = \left\{
+\begin{array}{ll}
+      g& \text{ if $b = g$ } \\
+      Proj_1(b)& \text{ otherwise }
+\end{array}
+\right. \]
+
+
+\begin{defn}[n-cestor: n'th generation ancestor block]
+$$
+n\text{-}cestor : B \times \mathbb{N} \to B\\
+$$
+\[ n\text{-}cestor(b, n) = \left\{
+\begin{array}{ll}
+      b& \text{ if $n = 0$ } \\
+      n\text{-}cestor(Prev(b), n - 1)& \text{ otherwise }
+\end{array}
+\right. \]
+\end{defn}
+
+
+A block is "in the blockchain" of another block if it one of its ancestors.
+
+\begin{defn}[Blockchain membership, $m_1 \downharpoonright m_2$]
+\begin{align*}
+\cdot \downharpoonright \cdot&: B \times B \to \{True, False\} \\
+b_1 \downharpoonright b_2 &:\Leftrightarrow \exists n \in \mathbb{N}, b_1 = n\text{-}cestor(b_2, n)
+\end{align*}
+\end{defn}
+
+We note that $\forall b \in B, g \downharpoonright b$.
+
+The blockchain is also equipped with a height map that satisfies the following conditions:
+\begin{align*}
+  Height&: B \to \mathbb{N} \\
+  Height(b) &= \begin{cases}
+    \text{$0$} &\text{if $b = g$} \\
+    \text{$1 + Height(Prev(b))$} &\text{otherwise}
+  \end{cases}
+\end{align*}
+
+Finally, the underlying blockchain has a forkchoice rule, which is parametric in a starting block (where the forkchoice ``begins"):
+$$
+\mathcal{F}: B \times \mathcal{P}(B) \to B
+$$
+
+The forkchoice returns a block ``on top of" the starting block:
+$$
+\forall b \in B, \forall \underline{B} \in \mathcal{P}(B), b \downharpoonright \mathcal{F}(b, \underline{B})
+$$
+\end{defn}
+
+We can now construct the consensus values for the finality gadget.
+\begin{defn}[Consensus values in the CBC Finality Gadget]
+Finality gadgets specify 'epoch lengths,' which is essentially how frequently they operate:
+$$
+Epoch\_Length \in \mathbb{N}_+
+$$
+The consensus values are blocks on the epoch boundries:
+$$
+\mathcal{C} = \{b \in B : Height(b) \equiv 0 \pmod{Epoch\_Length}\}
+% maybe change to divides relation?
+% AA: congruence FTW
+$$
+\end{defn}
+
+We now construct the finality gadgets new forkchoice, which can be understood as GHOST on the epochs, followed by the underlying blockchain's forkchoice from the tip epoch.
+
+As $\mathcal{C}$ is a subset of $B$, we can inherent the blockchain membership relation $\downharpoonright$ from $B$.
+% \begin{defn}[Blockchain Epoch membership, $m_1 \downharpoonright_c m_2$]
+% \begin{align*}
+% \cdot \downharpoonright_c \cdot&: C \times B \to \{True, False\} \\
+% b_1 \downharpoonright_c b_2 &:\Leftrightarrow \exists n \in \mathbb{N}, b_1 = n\text{-}cestor(b_2, n) \land n \equiv 0 \pmod{Epoch\_Length}
+% \end{align*}
+% \end{defn}
+
+This allows us to define the score of an epoch.
+\begin{defn}[Epoch Score]
+\begin{align*}
+  Epoch\_Score&: \mathcal{C} \times \Sigma \to \mathbb{R} \\
+  Epoch\_Score(e, \sigma) &= \sum_{v \in \mathcal{V} : \exists b' \in L^H_E(\sigma)(v), b \downharpoonright b'} \mathcal{W}(v)
+\end{align*}
+\end{defn}
+
+\begin{defn}[Children Epochs]
+% \begin{align*}
+%   Children\_Epochs&: \mathcal{C} \times \mathcal{P}(B) \to \mathcal{C} \\
+%   Children\_Epochs(e, bs) &= \{b' \in bs: e \downharpoonright b' \land Height(b') = Height(e) + Epoch\_Length\}
+% \end{align*}
+\begin{align*}
+  Children\_Epochs&: \mathcal{C} \times \Sigma \to \mathcal{C} \\
+  Children\_Epochs(e, \sigma) &= \{b' \in Blocks\_In(\sigma): e \downharpoonright b' \land Height(b') = Height(e) + Epoch\_Length\}
+\end{align*}
+\end{defn}
+
+% Note that while the score of an epoch is parametric in protocol states $\sigma \in \Sigma$, the children epochs are parametric in a set of blocks $bs \subset B$. Notably, for sets of blocks, we assume that the forkchoice runner has seen a set of blocks in the underlying blockchain satisfying the condition $bs \subset B : b \in bs \implies Prev(b) \in bs$.
+
+% We can now define the best children epochs, given a protocol state and the blocks the forkchoice runner has seen:
+\begin{defn}
+% \begin{align*}
+% Best\_Children\_Epochs&: C \times \mathcal{P}(B) \times \Sigma \to \mathcal{P}(C)\\
+% Best\_Children\_Epochs(e, bs, \sigma) &= \argmax\limits_{e' \in Children\_Epochs(e, bs)} Epoch\_Score(e', \sigma)
+% \end{align*}
+\begin{align*}
+Best\_Children\_Epochs&: C \times \Sigma \to \mathcal{P}(C)\\
+Best\_Children\_Epochs(e, \sigma) &= \argmax\limits_{e' \in Children\_Epochs(e, \sigma)} Epoch\_Score(e', \sigma)
+\end{align*}
+\end{defn}
+
+We can now define GHOST on the epochs:
+
+\begin{defn}
+\begin{align*}
+GHOST&: \mathcal{P}(C) \times \Sigma \to \mathcal{P}(B)\\
+GHOST(\underline{b}, \sigma) &= [ \bigcup\limits_{\substack{\underline{b} \in \underline{b} \\ Children\_Epochs(b, \sigma) \neq \emptyset}} GHOST(Best\_Children\_Epochs(b, \sigma), \sigma) ] \\
+&~~~\cup [ \bigcup\limits_{\substack{b \in \underline{b} \\ Children\_Epochs(b, \sigma) = \emptyset}} \{b\} ]
+\end{align*}
+\end{defn}
+
+% \begin{defn}[Estimator for the CBC Finality gadget]
+% $$
+% \mathcal{E}_{\underline{b}}(\sigma) = \{ b \in \underline{b} \cap C: \exists b' \in \bigcup_{e \in GHOST(\{g\}, \underline{b}, \sigma)} \mathcal{F}(e, \underline{b}) ~,~~ n\text{-}cestor(b',Height(b) \pmod{Epoch\_Length}) = b \}
+% $$
+
+% \end{defn}
+
+\begin{defn}[Estimator for the CBC Finality gadget]
+
+$$
+\mathcal{E}(\sigma) = \{ b \in \mathcal{C}: \exists b' \in GHOST(\{g\}, \sigma), b' \downharpoonright b \}
+$$
+
+\end{defn}
+
+\begin{defn}[Fork Choice Rule for the CBC Finality gadget]
+Original fork choice rule:
+$$
+\mathcal{F}(\{g\}, \underline{b})
+$$
+
+New fork choice rule:
+$$
+\mathcal{F}(\mathcal{E}(\sigma), \underline{b}))
+$$
+
+\end{defn}
+
+Finally, we now insist that the forkchoice rule of the underlying chain starts at the estimator of the finality gadget, completing our definition of the underlying blockchain protocol.
+
+
+\subsection{Casper the Friendly CBC Sharded Blockchain}
+
+\begin{defn}[Shard IDs $S$]
+\begin{align*}
+  S
+\end{align*}
+\end{defn}
+
+\begin{defn}[Message Payloads $P$]
+\begin{align*}
+  P
+\end{align*}
+\end{defn}
+
+\begin{defn}[Block Data $D$]
+\begin{align*}
+  D
+\end{align*}
+\end{defn}
+
+\begin{defn}[Lists of Things]
+For a set $X$, let $X^*$ denote all the finite length lists of elements in set $X$.
+\end{defn}
+
+\begin{defn}[List Prefix $\preceq$]
+$A \preceq B$ iff list $A$ is a prefix of list $B$
+\end{defn}
+
+\newcommand{\Q}{B \times \mathbb{N} \times P}
+
+We note that the blocks we will construct for the sharded blockchain satisfy this equation:
+$$
+B \subseteq S \times B \times (S \to (\Q)^*) \times (S \to (\Q)^*) \times (S \to B \cup \{\emptyset\}) \times D
+$$
+
+which allows us to define the following convenience functions:
+
+\begin{defn}[Blocks $B$]
+\begin{align*}
+  \text{If } b = (shard\_id,~ prev\_blk, ~sent\_log,& ~recv\_log, ~src, ~blk\_data) \in B \text{ , then}\\
+  Shard(b) &= shard\_id \\
+  Prev(b) &= prev\_blk \\
+  Sent\_Log(b) &= sent\_log \\
+  Received\_Log(b) &= recv\_log \\
+  Source(b) &= src
+\end{align*}
+\end{defn}
+
+%TODO: I think the cross shard messages are not a subset of but instead equal B \times ... maybe.
+
+\begin{defn}[Cross-shard Messages $Q$]
+\begin{align*}
+  Q \subseteq B \times \mathbb{N} \times& P \\
+  \text{If } (b, n, d) \in Q &\text{ , then:} \\
+  Base((b, n, d)) &= b \\
+  TTL((b, n, d)) &= n
+\end{align*}
+\end{defn}
+
+% TODO: why do we have these? Let's remove them. They complicate the spec for little benefit, I think. We can just note above (when introducing lists) that [] is the empty list
+
+\begin{defn}[Genesis Logs]
+\begin{align*}
+  Log_g&: S \to (\Q)^* \\
+  \forall s \in S&, Log_g(s) = []
+\end{align*}
+\end{defn}
+
+\begin{defn}[Genesis Sources]
+\begin{align*}
+  Sources_g&: (S \to (\Q)^*) \times (S \to B \cup \{\emptyset\}) \\
+  \forall s \in S&, Sources_g(s) = \emptyset
+\end{align*}
+\end{defn}
+
+\subsubsection{Block Validity Conditions}
+
+We now introduce further restrictions on blocks, in the form of validity conditions. As these are functions on single blocks, we note that the type signature of these conditions is $B \to \{True, False\}$.
+
+\begin{defn}[Shard ID Consistency]
+\begin{align*}
+  Shard\_ID\_Consistency(b) :\Leftrightarrow& Shard(Prev(b)) = Shard(b) \land \\
+  & \forall s \in S, \big[Shard(Sources(b)(s)) = s \\
+  &~~~~~~~~~~~ \land \forall q \in Sent\_Log(b)(s), Shard(Base(q)) = s \\
+  &~~~~~~~~~~~ \land \forall q \in Received\_Log(b)(s), Shard(Base(q)) = Shard(b) \big]
+\end{align*}
+\end{defn}
+
+\begin{defn}[Monotonicity Conditions]
+
+\textbf{ \\Monotonic Sources}
+\begin{align*}
+  Source\_Monotonicity(b) :\Leftrightarrow& \forall s \in S, Source(b)(s) \downharpoonright Source(Prev(b))(s)
+\end{align*}
+
+\textbf{Sent Log Monotonicity}
+\begin{align*}
+  Sent\_Log\_Monotonicity(b): \Leftrightarrow& \forall s \in S, Sent\_Log(Prev(b))(s) \preceq Sent\_Log(b)(s)
+\end{align*}
+
+\textbf{Receive Log Monotonicity}
+\begin{align*}
+Received\_Log\_Monotonicity(b): \Leftrightarrow& \forall s \in S, Received\_Log(Prev(b))(s) \preceq Received\_Log(b)(s)
+\end{align*}
+
+\textbf{Monotonic Bases}
+\begin{align*}
+  Monotonic\_Sent\_Bases(b): \Leftrightarrow& \forall s \in S, \forall i \in [2, Length(Sent\_Log(b)(s))], \\
+  &~~~~~~~~~~~ Base(Sent\_Log(b)(s)[i-1]) \downharpoonright Base(Sent\_Log(b)(s)[i]) \\
+  Monotonic\_Received\_Bases(b): \Leftrightarrow& \forall s \in S, \forall i \in [2, Length(Received\_Log(b)(s))], \\
+  &~~~~~~~~~~~  Base(Received\_Log(b)(s)[i-1]) \downharpoonright Base(Received\_Log(b)(s)[i])
+\end{align*}
+
+\textbf{Base-Source Monotonicity}
+\begin{align*}
+  Base\_Source\_Monotonicity(b): \Leftrightarrow& \forall s \in S, \forall q \in Sent\_Log(b)(s), Source(b)(s) \downharpoonright Base(q)
+\end{align*}
+\end{defn}
+
+\begin{defn}[Messsage Arrival Conditions]
+
+\textbf{ \\Messages Sent by Source are Received Once and In-Order}
+\begin{align*}
+  Receive\_Once\_In\_Order(b) :\Leftrightarrow& \forall s \in S, Received\_Log(b)(s) \preceq Sent\_Log(Source(b)(s))(Shard(b))
+\end{align*}
+
+\textbf{Receive Messages by Expiry}
+\begin{align*}
+  Receive\_By\_Expiry(b): \Leftrightarrow& \forall s \in S, \forall q \in Received\_Log(b)(s), \\
+  &~~~~~~~~~~~  Base(q) \downharpoonright b \land Height(b) - Height(Base(q)) \leq TTL(q)
+\end{align*}
+
+\textbf{Messages Sent but Not Received are Not Expired} \\
+\begin{align*}
+  Unreceived\_Messages\_Unexpired(b): \Leftrightarrow& \forall s \in S, \forall q \in Sent\_Log(b)(s) - Received\_Log(Source(b)(s))(Shard(b)), \\
+  &~~~~~~~~~~~ Height(Source(b)(s)) - Height(Base(q)) < TTL(q)
+\end{align*}
+\end{defn}
+
+We now have enouch structure to define the blocks in a sharded blockchain.
+
+\subsubsection{Blocks}
+\begin{defn}[Set of Blocks $B$]
+\begin{align*}
+  B^0&= \bigcup_{i \in S} (i \times \{ \emptyset \} \times Log_g \times ( Log_g \times Received\_Sources_g ) \times Genesis\_Data) \\
+  B^n&= \Big\{ b \in S \times B^{n-1} \times (S \to (B^{n-1} \times \mathbb{N} \times P)^*) \times [(S \to (B^{n-1} \times \mathbb{N} \times P)^*) \times (S \to B^{n-1} \cup \{\emptyset\})] \times D :
+  \\
+  % --------------------------------------------------------
+  % Shard ID validity conditions
+  &~~~~~~~~~~~~~~~~ Shard\_ID\_Consistency(b) ~\land \\
+  &~~~~~~~~~~~~~~~~\big[Source\_Monotonicity(b) \\
+  &~~~~~~~~~~~~~~~~~ \land Sent\_Log\_Monotonicity(b) \\
+  &~~~~~~~~~~~~~~~~~ \land Received\_Log\_Monotonicity(b) \\
+  &~~~~~~~~~~~~~~~~~ \land Monotonic\_Sent\_Bases(b) \\
+  &~~~~~~~~~~~~~~~~~ \land Monotonic\_Received\_Bases(b)\\
+  &~~~~~~~~~~~~~~~~~ \land Base\_Source\_Monotonicity(b) \big] ~\land \\
+  &~~~~~~~~~~~~~~~~\big[Receive\_Once\_In\_Order(b) \\
+  &~~~~~~~~~~~~~~~~~ \land Receive\_By\_Expiry(b) \\
+  &~~~~~~~~~~~~~~~~~ \land Unreceived\_Messages\_Unexpired(b) \big] \\
+  \Big\} \\
+  B &= \bigcup_{n=0}^\infty B^n
+\end{align*}
+\end{defn}
+
+
+So we have the following consensus values
+\begin{defn}[Consensus values]
+$$
+\mathcal{C} = B
+$$
+\end{defn}
+
+\subsubsection{Estimator}
+
+\iffalse
+Let us assume for now that we have an assignment of parent shards for each shard in $S$. Only the root shard has its parent as $\emptyset$.
+\begin{defn}[Parent]
+\begin{align*}
+  Parent&: S \to S \cup \{ \emptyset \}
+\end{align*}
+\end{defn}
+\fi
+
+For this presentation we will assume that we have two shards $S= \{P, C\}$, where $P$ is the ``parent" (or root) shard and $C$ is the ``child" shard. The ``child"'s estimates will ``follow" the parents. The parent shard's fork choice rule is independent of the child's, and is (as an example for the sake of this presentation) is simply GHOST:
+
+\begin{defn}[Fork Choice $\mathcal{E}_P$ (for root shard)]
+\begin{align*}
+  \mathcal{E}_P&: \Sigma \to B \\
+  \mathcal{E}_P&(\sigma) = GHOST(\{g_P\}, \sigma)
+\end{align*}
+\end{defn}
+
+The forkchoice of the parent ``restricts'' the fork choices that are allowed for the child shard. Through this restriction, fork choices on the parent and child shard will be ``synchronized", in that they won't have sources that disagree with blocks chosen on other shards, and there won't be any expired unreceived messages from the point of view of the blocks returned by the fork choice.
+
+To maintain these conditions, we introduce 4 ``filter conditions", which is a condition that will be used to prevent blocks that don't synchronize with the parent fork choice to be chosen in the child's fork choice. The condition is defined to be parametric in a block from the parent shard $b_P$.
+
+\begin{defn}[Filter Conditions]
+  \textbf{\\Parent to Child Source Block Consistency}
+  \begin{align*}
+    Filter_1(b_C; b_P): \Leftrightarrow& Source(b_P)(C) \cancel{\downharpoonright} b_C \\
+  \end{align*}
+  \textbf{\\Child to Parent Source Block Consistency}
+  \begin{align*}
+    Filter_2(b_C; b_P): \Leftrightarrow& Source(b_C)(P) \cancel{\downharpoonright} b_P \\
+  \end{align*}
+  We note that the relation $\downarrow$ holds for two block $b, b'$ if $b \downharpoonright b' \lor b' \downharpoonright b$
+  \textbf{\\Parent to Child Sent Message Expiry Condition}
+  \begin{align*}
+    Filter_3(b_C; b_P): \Leftrightarrow& \exists q \in Sent\_Log(b_P)(C), q \notin Received\_Log(b_C)(P) \land Height(Base(q)) + TTL(q) \leq Height(b_C) \\
+  \end{align*}
+  \textbf{Child to Parent Sent Message Expiry Condition}
+  \begin{align*}
+    Filter_4(b_C; b_P): \Leftrightarrow& \exists q \in Sent\_Log(b_C)(P), q \notin Received\_Log(b_P)(C) \land Height(Base(q)) + TTL(q) \leq Height(b_P) \\
+  \end{align*}
+  \textbf{Total Filter}
+  \begin{align*}
+    Filter\_Block(b_C; b_P): \Leftrightarrow& Filter_1(b_C; b_P) \lor Filter_2(b_C; b_PC) \lor Filter_3(b_C; b_P) \lor Filter_4(b_C; b_P) \\
+  \end{align*}
+\end{defn}
+
+
+\begin{defn}[Filtered Children]
+\begin{align*}
+  Filtered\_Children&: B \times \mathcal{P}(B) \times ( B \to \{True, False\} ) \to \mathcal{P}(B) \\
+  Filtered\_Children&(b, blocks, filter\_block) = \{ b' \in blocks: Prev(b') = b \land \neg Filter\_Block(b'; filter\_block) \}
+\end{align*}
+\end{defn}
+
+\begin{defn}[Best Child]
+\begin{align*}
+  Best\_Children&: B \times \mathcal{P}(B) \times (B \to \mathbb{R}) \times B \to \mathcal{P}(B) \\
+  Best\_Children&(b, blocks, W, filter\_block) =  \argmax\limits_{b' \in Filtered\_Children(b, blocks, filter\_block)} W(b')
+\end{align*}
+\end{defn}
+
+\begin{defn}[Block score]
+\begin{align*}
+  Score&: \Sigma \to (B \to \mathbb{R}^+) \\
+  Score&(\sigma)(b) = \sum_{v \in \mathcal{V} : \exists b' \in L^H_E(\sigma)(v), b \downharpoonright b'} \mathcal{W}(v)
+\end{align*}
+\end{defn}
+
+We note that this score function works properly when each validator is assigned to a specific shard. In the future, this score function will count the score with respect to the latest honest messages on a specific shard.
+
+\begin{defn}
+\begin{align*}
+&Filtered\_GHOST: \mathcal{P}(B) \times \mathcal{P}(B) \times (B \to \mathbb{R}) \times B \to \mathcal{P}(B) \\
+&Filtered\_GHOST(\underline{b}, blocks, W, filter\_block) =  \\
+&\bigcup\limits_{\substack{b \in \underline{b} ~:\\ Best\_Children(b, blocks, W, filter\_block) \neq \emptyset}} Filtered\_GHOST(Best\_Children(b, blocks, W, filter\_block), blocks, W, filter\_block)~ \cup \\
+&\bigcup\limits_{\substack{b \in \underline{b} ~:\\ Best\_Children(b, blocks, W, filter\_block) = \emptyset}} \{b\}
+\end{align*}
+\end{defn}
+
+Now, we can finially construct the forkchoice of the child, which can be understood as GHOST run from the sourc block on the child, where any blocks that satisfy the filter conditions are not chosen by GHOST.
+
+\begin{defn}[Fork Choice $\mathcal{E}_C$ (for child shard $C$)]
+\begin{align*}
+  \mathcal{E}_C&: \Sigma \to \mathcal{P}(B) \\
+  \mathcal{E}_C(\sigma) &= Filtered\_GHOST(\{Source({E}_P(\sigma))(C)\}, Blocks(\sigma), Score(\sigma), {E}_P(\sigma))
+\end{align*}
+\end{defn}
+
+The estimator for the CBC sharded blockchain consensus protocol gives fork choices for both the parent and the child:
+
+\begin{defn}[Estimator $\mathcal{E}$]
+\begin{align*}
+  \mathcal{E}_C&: \Sigma \to \mathcal{P}(B) \\
+  \mathcal{E}(\sigma) &= {E}_P(\sigma) \cup {E}_C(\sigma)
+\end{align*}
+\end{defn}
