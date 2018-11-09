@@ -219,7 +219,7 @@ $$
 $$
 \end{defn}
 
-Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because the domain of the estimator has not yet been defined, it isn't quite proper for us ask for the estimator as a parameter. However, for ease of presentation, we will assume that we have the estimator as a parameter.
+Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because the domain of the estimator has not yet been defined, it isn't quite proper for us to ask for the estimator as a parameter. However, for ease of presentation, we will assume that we have the estimator as a parameter.
 
 Minimal CBC Casper protocol states will therefore be determined by the choice of these parameters:
 
@@ -330,7 +330,6 @@ $$
 We think of protocol-following nodes as existing in these protocol states ($\Sigma_t$), and following the protocol state transitions ($\to$) to get from one state to another. If a node at state $\sigma \in \Sigma_t$ receives messages $m$ such that $\sigma \cup \{m\} \in \Sigma$, then they will transition to state $\sigma \cup \{m\}$, if it doesn't expose the node to too many equivocation faults (i.e., as long as $F(\sigma \cup \{m\}) \leq t$).
 
 We are now finished with the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
-
 
 \pagebreak
 \section{Safety Proof}
