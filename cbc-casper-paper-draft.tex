@@ -89,7 +89,7 @@
 \maketitle
 
 \begin{abstract}
-CBC Casper is a family of ``correct-by-construction" consensus protocols that share the same proof of asynchronous, Byzantine fault tolerant consensus safety. We describe this family of protocols by defining their protocol states and protocol state transitions, and then we provide a proof of Byzantine fault tolerant consensus safety for the entire Minimal CBC Casper family of protocols. We give examples members of this family of protocols, including a binary consensus protocol. ``Casper the Friendly Ghost", a blockchain consensus protocol, and a sharded blockchain consensus protocol. Each of these examples is ``correct-by-construction" because the way they are defined guarantees that they are part of this family of protocols, and therefore satisfy the consensus safety theorem. This draft is intended to be introductory and educational, it is not a complete description of a system that can be implemented exactly as specified.
+CBC Casper is a family of ``correct-by-construction" consensus protocols that share the same proof of asynchronous, Byzantine-fault-tolerant consensus safety. We describe this family of protocols by defining their protocol states and protocol state transitions, and then we provide a proof of Byzantine-fault-tolerant consensus safety for the entire Minimal CBC Casper family of protocols. We give examples of members of this family of protocols, including a binary consensus protocol. ``Casper the Friendly Ghost", a blockchain consensus protocol, and a sharded blockchain consensus protocol. Each of these examples is ``correct-by-construction" because the way they are defined guarantees that they are part of this family of protocols, and therefore satisfy the consensus safety theorem. This draft is intended to be introductory and educational, it is not a complete description of a system that can be implemented exactly as specified.
 \end{abstract}
 
 \pagebreak
@@ -108,30 +108,30 @@ More specifically, consensus protocols traditionally are said to provide two pro
 \item \textbf{Liveness}: Nodes eventually/inevitably make decisions
 \end{itemize}
 
-A consensus protocol is said to be ``synchronously safe" (or ``live in a synchronous network"), if its safety (or liveness) is guaranteed by an assumption about timing, or about the way that race conditions get resolved (e.g. all these messages will arrive before some timeout). It is called ``asynchronously safe" (or ``live in asynchrony") if its safety (or liveness) is guaranteed without assumptions about timing, or about the way that race conditions get resolved (with the exception that every message sent is eventually recieved).
+A consensus protocol is said to be ``synchronously safe" (or ``live in a synchronous network"), if its safety (or liveness) is guaranteed by an assumption about timing, or about the way that race conditions get resolved (e.g. all these messages will arrive before some timeout). It is called ``asynchronously safe" (or ``live in asynchrony") if its safety (or liveness) is guaranteed without assumptions about timing, or about the way that race conditions get resolved (with the exception that every message sent is eventually received).
 
-Fault tolerant consensus protocols have safety and/or liveness despite some number of \emph{faults}. Traditionally, faulty behaviour is either considered to be ``Crash Faulty", where nodes are faulty by virtue of not sending messages, or they are considered ``Byzantine", which means that they may exhibit arbitrary behaviour. There is famous result known as ``FLP impossibility" \cite{Fischer_Lynch_Paterson_FLP_Impossibility_1985} that shows that it's impossible to have a deterministic consensus protocol that is safe and live in an asynchronous network, if there is one crash fault.
+Fault-tolerant consensus protocols have safety and/or liveness despite some number of \emph{faults}. Traditionally, faulty behaviour is either considered to be ``Crash Faulty", where nodes are faulty by virtue of not sending messages, or they are considered ``Byzantine", which means that they may exhibit arbitrary behaviour. There is a famous result known as ``FLP impossibility" \cite{Fischer_Lynch_Paterson_FLP_Impossibility_1985} that shows that it's impossible to have a deterministic consensus protocol that is safe and live in an asynchronous network, if there is one crash fault.
 
 More specifically, we use the following fault classification:
 
 \textbf{Liveness faults:}
 \begin{itemize}
 \item Crash fault: failing to send a message when expected
-\item Ommission fault: failing to receive a message when expected
+\item Omission fault: failing to receive a message when expected
 \end{itemize}
 \textbf{Safety faults:}
 \begin{itemize}
-\item Invalid message fault: producing messages that cannot be produced by a protocol following node
+\item Invalid message fault: producing messages that cannot be produced by a protocol-following node
 \item Equivocation fault: producing valid messages in a way that could not have been produced by a \emph{single} execution of the protocol
 \end{itemize}
 
-They are named this way because liveness faults are indistinguishable from network latency (from any point in the distributed system that isn't the faulty node itself), and because network latency (and therefore liveness faults) cannot cause protocol-following nodes to make inconsistent decisions in an asynchronously safe consensus protocol. We assumed that nodes can check the validity of messages, so if we insist that they do, then only equivocation faults will be able to cause consensus failure.
+They are named this way because liveness faults are indistinguishable from network latency (from any point in the distributed system that isn't the faulty node itself), and because network latency (and therefore liveness faults) cannot cause protocol-following nodes to make inconsistent decisions in an asynchronously-safe consensus protocol. We assumed that nodes can check the validity of messages, so if we insist that they do, then only equivocation faults will be able to cause consensus failure.
 
-In a non-trivial consensus protocol, protocol-following nodes following completely independent executions of the protocol can decide on inconsistent values. Equivocating nodes can (by definition) exclusively show different nodes messages from independent protocol executions, and as a result, a large enough number of equivocation faults is fundamentally enough to cause consensus failure in any consensus protocol.
+In a non-trivial consensus protocol, protocol-following nodes following completely independent executions of the protocol can decide on inconsistent values. Equivocating nodes can (by definition) exclusively show different node messages from independent protocol executions, and as a result, a large enough number of equivocation faults is fundamentally enough to cause consensus failure in any consensus protocol.
 
 \subsection{About This Paper}
 
-This document specifies a family of asynchronously safe consensus protocols in terms of the protocol states (sets of messages) and protocol state transitions (the superset relation) that clients running the protocol will execute (by receiving messages from consensus forming nodes). Each member of the family satisfies a proof (shared here) that if there aren't more than some number (weight) of equivocations then it is impossible for nodes to make inconsistent decisions. This number, the protocol's equivocation fault tolerance threshold, is given as a parameter of the CBC Casper family of protocols. Equivocation faults are a subset of Byzantine faults and we have consensus safety unless there are too many equivocation faults specifically, meaning that the consensus protocols tolerate the equivocation fault tolerance threshold number (weight) of Byzantine faults.
+This document specifies a family of asynchronously-safe consensus protocols in terms of the protocol states (sets of messages) and protocol state transitions (the superset relation) that clients running the protocol will execute (by receiving messages from consensus forming nodes). Each member of the family satisfies a proof (shared here) that if there aren't more than some number (weight) of equivocations then it is impossible for nodes to make inconsistent decisions. This number, the protocol's equivocation-fault-tolerance threshold, is given as a parameter of the CBC Casper family of protocols. Equivocation faults are a subset of Byzantine faults and we have consensus safety unless there are too many equivocation faults specifically, meaning that the consensus protocols tolerate the equivocation fault tolerance threshold number (weight) of Byzantine faults.
 
 Each member of the family is going to be identified by five ``parameters". Four of these parameters can be given before the protocol specification, but one (``the estimator") must initially be left undefined because it is a function of the (initially undefined) protocol states. The specification of the family of protocols is a partial specification of any member of the family, because the parameters need to be defined in order for a consensus protocol to be specified. It is possible to choose the parameters in a way that corresponds to a trivial consensus protocol, so we will give some non-trivial example protocols by giving example parameters.
 
@@ -165,14 +165,14 @@ Note that this work does not make any synchrony assumptions, nor does it discuss
 
 \subsection{Acknowledgements}
 
-We'd like to thank Leslie Lamport and other pre-blockchain consensus protocol researchers for founding the field that left us with excellent definitions and some interesting consensus protocols, Satoshi Nakamoto for Nakamoto (``Proof-of-Work") consensus\cite{nakamoto}, as it served as an excellent introduction to Byzantine fault tolerant consensus and because its ``forking" behaviour directly led to this work, and Greg Meredith for work on the definition of the protocol message data structure and for the introduction to the ``correct-by-construction" methodology. We would finially like to thank Vitalik Buterin for his continued support, collaboration, and mentorship since the very early stages of this research, over three years ago.
+We'd like to thank Leslie Lamport and other pre-blockchain consensus protocol researchers for founding the field that left us with excellent definitions and some interesting consensus protocols, Satoshi Nakamoto for Nakamoto (``Proof-of-Work") consensus\cite{nakamoto}, as it served as an excellent introduction to Byzantine-fault-tolerant consensus and because its ``forking" behaviour directly led to this work, and Greg Meredith for work on the definition of the protocol message data structure and for the introduction to the ``correct-by-construction" methodology. We would finally like to thank Vitalik Buterin for his continued support, collaboration, and mentorship since the very early stages of this research, over three years ago.
 
 \pagebreak
 \section{Description of CBC Casper}
 
 \subsection{CBC Casper ``Parameters"}
 
-Our first parameter is a set of names that will label the senders of protocol messages. The senders are understood to be the consensus forming nodes, called ``validators":
+Our first parameter is a set of names that will label the senders of protocol messages. The senders are understood to be the consensus-forming nodes, called ``validators":
 
 \begin{defn}[Validator names]
 A non-empty set:
@@ -190,9 +190,9 @@ $$
 $$
 \end{defn}
 
-The CBC Casper protocol states are parametric in a Byzantine fault tolerance threshold:
+The CBC Casper protocol states are parametric in a Byzantine-fault-tolerance threshold:
 
-\begin{defn}[Byzantine fault tolerance threshold]
+\begin{defn}[Byzantine-fault-tolerance threshold]
 A non-negative real number, strictly smaller than the total validator weights
 $$0 \leq t < \sum_{v \in \mathcal{V}} \mathcal{W}(v)$$
 \end{defn}
@@ -219,7 +219,7 @@ $$
 $$
 \end{defn}
 
-Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because domain of the estimator has not yet been defined, it isn't quite proper for us ask for the estimator a parameter. However, for ease of presentation we will assume that we have the estimator as a parameter.
+Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because the domain of the estimator has not yet been defined, it isn't quite proper for us ask for the estimator as a parameter. However, for ease of presentation, we will assume that we have the estimator as a parameter.
 
 Minimal CBC Casper protocol states will therefore be determined by the choice of these parameters:
 
@@ -329,7 +329,7 @@ $$
 
 We think of protocol-following nodes as existing in these protocol states ($\Sigma_t$), and following the protocol state transitions ($\to$) to get from one state to another. If a node at state $\sigma \in \Sigma_t$ receives messages $m$ such that $\sigma \cup \{m\} \in \Sigma$, then they will transition to state $\sigma \cup \{m\}$, if it doesn't expose the node to too many equivocation faults (i.e., as long as $F(\sigma \cup \{m\}) \leq t$).
 
-We are now finished the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
+We are now finished with the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
 
 
 \pagebreak
@@ -339,7 +339,7 @@ Our obligation is to provide a way for nodes to make consistent decisions even i
 
 \subsection{Guaranteeing Common Futures}
 
-We will define the common futures of a protocol states in terms of the intersection of their ``futures cones":
+We will define the common futures of protocol states in terms of the intersection of their ``futures cones":
 
 \begin{defn}[Futures cone in $\Sigma_t$]
 \begin{align}
@@ -429,7 +429,7 @@ P_\Sigma = \{True, False\}^\Sigma  %\text{functions $f$ with signature } f : \Si
 $$
 \end{defn}
 
-We say that property of a protocol state is called ``decided" from some protocol state if it holds for all future protocol states:
+We say that the property of a protocol state is called ``decided" from some protocol state if it holds for all future protocol states:
 
 \begin{defn}[Decided properties of protocol states]
 \begin{align}
@@ -607,7 +607,7 @@ Hence $\mathcal{E}(\sigma)$ is a set of consensus values that satisfies all prop
 \end{proof}
 \fi
 
-Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equiocating:
+Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equivocating:
 $$
 \neg Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)) \implies F(\bigcup_{i=1}^n \sigma_i) > t
 $$
@@ -672,7 +672,7 @@ Decided_{\mathcal{C},t}(p, \sigma)&= Decided_{\Sigma,t}(H(p), \sigma)
 \end{align}
 \end{defn}
 
-In addition to deciding on properties of protocol states, nodes can also make decisions on properties of consensus values.
+In addition to deciding on properties of protocol states, nodes can also make decisions on properties of consensus values:
 
 \begin{defn}[Decisions on properties of consensus values]
 $$Decisions_{\mathcal{C},t} : \Sigma_t \to \mathcal{P}(P_{\mathcal{C}})$$
