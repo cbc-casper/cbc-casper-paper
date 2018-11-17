@@ -260,7 +260,7 @@ We can construct finite protocol states that satisfy these equations by using th
 \begin{defn}[Preliminary protocol states, $\Sigma$, protocol messages $M$]
 \begin{align}
   \Sigma^0& := \{\emptyset\} \\
-  M^n& := \{ m \in \mathcal{C} \times \mathcal{V} \times \Sigma^n: Estimate(m) \in \mathcal{E}(\sigma)\}\\
+  M^n& := \{ m \in \mathcal{C} \times \mathcal{V} \times \Sigma^n: Estimate(m) \in \mathcal{E}(Justification(m))\}\\
   \Sigma^n& := \{ \sigma \in \mathcal{P}_{finite}(M^{n-1}) : m \in \sigma \implies Justification(m) \subseteq \sigma \} ~ ~ \text{ for $n > 0$ } \\
   M& := \bigcup_{i = 0}^{\infty} M^i \\
   \Sigma& := \bigcup_{i = 0}^{\infty} \Sigma^i
@@ -556,7 +556,7 @@ Then we will say that properties are ``consistent" if they are not inconsistent:
 \iff &\exists \sigma \in \Sigma, \forall q \in Q, q(\sigma)
 \end{align}
 
-Which is to say that a set of properties is consistent if there is at least one protocol state that satisifies each of them:
+Which is to say that a set of properties is consistent if there is at least one protocol state that jointly satisfies all of them:
 
 \begin{defn}[Consistency of properties of protocol states]
 $$ Consistent_\Sigma : \mathcal{P}(P_\Sigma) \to \{True, False\}$$
