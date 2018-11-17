@@ -506,7 +506,7 @@ $$
 
 \subsection{Casper the Friendly GHOST}
 
-Greedy Heaviest Observed Sub-Tree\cite{GHOST} is a contruction proposed to tackle reduced security issues in blockchains with fast conformation times. Here, we present a CBC specification for a GHOST-based blockchain fork choice rule.
+Greedy Heaviest Observed Sub-Tree\cite{GHOST} is a contruction proposed to tackle reduced security issues in blockchains with fast confirmation times. Here, we present a CBC specification for a GHOST-based blockchain fork choice rule.
 
 Starting from a genesis block $g$, we can define all blocks in a blockchain to have a previous block and some block data $D$.
 
@@ -554,7 +554,7 @@ $$
 \end{defn}
 
 
-A block is "in the blockchain" of another block if it one of its ancestors.
+A block is "in the blockchain" of another block if it is one of its ancestors.
 
 \begin{defn}[Blockchain membership, $m_1 \downharpoonright m_2$]
 \begin{align*}
@@ -649,7 +649,7 @@ $$
 
 Finality gadgets are consensus protocols on the blocks of an underlying blockchain, which has its own block structure and fork choice rule. Casper the Friendly Finality Gadget\cite{vitalik2017casperffg} describes one such construction of a finality gadget.
 
-Here, we will describe the underlying blockchain and the conditions it must satisfy, before showing how to layer a CBC Casper finality gadget on top, namely in the form of a change to the blockchains forkchoice.
+Here, we will describe the underlying blockchain and the conditions it must satisfy, before showing how to layer a CBC Casper finality gadget on top, namely in the form of a change to the blockchain's forkchoice.
 
 \begin{defn}[The underlying blockchain]
 We assume the blockchain has blocks:
@@ -701,7 +701,7 @@ $$
 \end{defn}
 
 
-A block is "in the blockchain" of another block if it one of its ancestors.
+A block is "in the blockchain" of another block if it is one of its ancestors.
 
 \begin{defn}[Blockchain membership, $m_1 \downharpoonright m_2$]
 \begin{align*}
@@ -1013,7 +1013,7 @@ Let us assume for now that we have an assignment of parent shards for each shard
 \end{defn}
 \fi
 
-For this presentation we will assume that we have two shards $S= \{P, C\}$, where $P$ is the ``parent" (or root) shard and $C$ is the ``child" shard. The ``child"'s estimates will ``follow" the parents. The parent shard's fork choice rule is independent of the child's, and is (as an example for the sake of this presentation) is simply GHOST:
+For this presentation we will assume that we have two shards $S= \{P, C\}$, where $P$ is the ``parent" (or root) shard and $C$ is the ``child" shard. The ``child"'s estimates will ``follow" the parents. The parent shard's fork choice rule is independent of the child's, and is (as an example for the sake of this presentation) simply GHOST:
 
 \begin{defn}[Fork Choice $\mathcal{E}_P$ (for root shard)]
 \begin{align*}
@@ -1035,7 +1035,7 @@ To maintain these conditions, we introduce 4 ``filter conditions", which is a co
   \begin{align*}
     Filter_2(b_C; b_P): \Leftrightarrow& Source(b_C)(P) \cancel{\downharpoonright} b_P \\
   \end{align*}
-  We note that the relation $\downarrow$ holds for two block $b, b'$ if $b \downharpoonright b' \lor b' \downharpoonright b$
+  We note that the relation $\downarrow$ holds for two blocks $b, b'$ if $b \downharpoonright b' \lor b' \downharpoonright b$
   \textbf{\\Parent to Child Sent Message Expiry Condition}
   \begin{align*}
     Filter_3(b_C; b_P): \Leftrightarrow& \exists q \in Sent\_Log(b_P)(C), q \notin Received\_Log(b_C)(P) \land Height(Base(q)) + TTL(q) \leq Height(b_C) \\
@@ -1083,7 +1083,7 @@ We note that this score function works properly when each validator is assigned 
 \end{align*}
 \end{defn}
 
-Now, we can finially construct the forkchoice of the child, which can be understood as GHOST run from the sourc block on the child, where any blocks that satisfy the filter conditions are not chosen by GHOST.
+Now, we can finially construct the forkchoice of the child, which can be understood as GHOST run from the source block on the child, where any blocks that satisfy the filter conditions are not chosen by GHOST.
 
 \begin{defn}[Fork Choice $\mathcal{E}_C$ (for child shard $C$)]
 \begin{align*}
