@@ -105,13 +105,13 @@ Consensus protocols are used by nodes in a distributed network to make consisten
 
 More specifically, consensus protocols traditionally are said to provide two properties:
 \begin{itemize}
-\item \textbf{Safety}: It's not possible for nodes to make inconsistent decisions
+\item \textbf{Safety}: It is not possible for nodes to make inconsistent decisions
 \item \textbf{Liveness}: Nodes eventually/inevitably make decisions
 \end{itemize}
 
 A consensus protocol is said to be ``synchronously safe" (or ``live in a synchronous network"), if its safety (or liveness) is guaranteed by an assumption about timing, or about the way that race conditions get resolved (e.g. all these messages will arrive before some timeout). It is called ``asynchronously safe" (or ``live in asynchrony") if its safety (or liveness) is guaranteed without assumptions about timing, or about the way that race conditions get resolved (with the exception that every message sent is eventually received).
 
-Fault-tolerant consensus protocols have safety and/or liveness despite some number of \emph{faults}. Traditionally, faulty behaviour is either considered to be ``Crash Faulty", where nodes are faulty by virtue of not sending messages, or they are considered ``Byzantine", which means that they may exhibit arbitrary behaviour. There is a famous result known as ``FLP impossibility" \cite{Fischer_Lynch_Paterson_FLP_Impossibility_1985} that shows that it's impossible to have a deterministic consensus protocol that is safe and live in an asynchronous network, if there is one crash fault.
+Fault tolerant consensus protocols have safety and/or liveness despite some number of \emph{faults}. Traditionally, faulty behaviour is either considered to be ``Crash Faulty", where nodes are faulty by virtue of not sending messages, or they are considered ``Byzantine", which means that they may exhibit arbitrary behaviour. There is a famous result known as ``FLP impossibility" \cite{Fischer_Lynch_Paterson_FLP_Impossibility_1985} that shows that it is impossible to have a deterministic consensus protocol that is safe and live in an asynchronous network, if there is one crash fault.
 
 More specifically, we use the following fault classification:
 
@@ -126,13 +126,13 @@ More specifically, we use the following fault classification:
 \item Equivocation fault: producing valid messages in a way that could not have been produced by a \emph{single} execution of the protocol
 \end{itemize}
 
-They are named this way because liveness faults are indistinguishable from network latency (from any point in the distributed system that isn't the faulty node itself), and because network latency (and therefore liveness faults) cannot cause protocol-following nodes to make inconsistent decisions in an asynchronously-safe consensus protocol. We assumed that nodes can check the validity of messages, so if we insist that they do, then only equivocation faults will be able to cause consensus failure.
+They are named this way because liveness faults are indistinguishable from network latency (from any node in the distributed system that is not the faulty node itself), and because network latency (and therefore liveness faults) cannot cause protocol-following nodes to make inconsistent decisions in an asynchronously safe consensus protocol. We assumed that nodes can check the validity of messages, so if we insist that they do, then only equivocation faults will be able to cause consensus failure.
 
 In a non-trivial consensus protocol, protocol-following nodes following completely independent executions of the protocol can decide on inconsistent values. Equivocating nodes can (by definition) exclusively show different nodes messages from independent protocol executions, and as a result, a large enough number of equivocation faults is fundamentally enough to cause consensus failure in any consensus protocol.
 
 \subsection{About This Paper}
 
-This document specifies a family of asynchronously-safe consensus protocols in terms of the protocol states (sets of messages) and protocol state transitions (the superset relation) that clients running the protocol will execute (by receiving messages from consensus forming nodes). Each member of the family satisfies a proof (shared here) that if there aren't more than some number (weight) of equivocations then it is impossible for nodes to make inconsistent decisions. This number, the protocol's equivocation-fault-tolerance threshold, is given as a parameter of the CBC Casper family of protocols. Equivocation faults are a subset of Byzantine faults and we have consensus safety unless there are too many equivocation faults specifically, meaning that the consensus protocols tolerate the equivocation fault tolerance threshold number (weight) of Byzantine faults.
+This document specifies a family of asynchronously safe consensus protocols in terms of the protocol states (sets of messages) and protocol state transitions (the superset relation) that clients running the protocol will execute (by receiving messages from consensus forming nodes). Each member of the family satisfies a proof that if there are not more than some weight equivocations, then node decisions will be consistent. This number, the protocol's equivocation fault tolerance threshold, is given as a parameter of the CBC Casper family of protocols. The protocols will tolerate this equivocation fault tolerance threshold weight of Byzantine faults.
 
 Each member of the family is going to be identified by five ``parameters". Four of these parameters can be given before the protocol specification, but one (``the estimator") must initially be left undefined because it is a function of the (initially undefined) protocol states. The specification of the family of protocols is a partial specification of any member of the family, because the parameters need to be defined in order for a consensus protocol to be specified. It is possible to choose the parameters in a way that corresponds to a trivial consensus protocol, so we will give some non-trivial example protocols by giving example parameters.
 
@@ -166,7 +166,7 @@ Note that this work does not make any synchrony assumptions, nor does it discuss
 
 \subsection{Acknowledgements}
 
-We'd like to thank Leslie Lamport and other pre-blockchain consensus protocol researchers for founding the field that left us with excellent definitions and some interesting consensus protocols, Satoshi Nakamoto for Nakamoto (``Proof-of-Work") consensus\cite{nakamoto}, as it served as an excellent introduction to Byzantine-fault-tolerant consensus and because its ``forking" behaviour directly led to this work, and Greg Meredith for work on the definition of the protocol message data structure and for the introduction to the ``correct-by-construction" methodology. We would finally like to thank Vitalik Buterin for his continued support, collaboration, and mentorship since the very early stages of this research, over three years ago.
+We would like to thank Leslie Lamport and other pre-blockchain consensus protocol researchers for founding the field that left us with excellent definitions and some interesting consensus protocols, Satoshi Nakamoto for Nakamoto (``Proof-of-Work") consensus\cite{nakamoto}, as it served as an excellent introduction to Byzantine fault tolerant consensus and because its ``forking" behaviour directly led to this work, and Greg Meredith for work on the definition of the protocol message data structure and for the introduction to the ``correct-by-construction" methodology. We would finally like to thank Vitalik Buterin for his continued support, collaboration, and mentorship since the very early stages of this research, over three years ago.
 
 \pagebreak
 \section{Description of CBC Casper}
@@ -220,7 +220,7 @@ $$
 $$
 \end{defn}
 
-Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because the domain of the estimator has not yet been defined, it isn't quite proper for us to ask for the estimator as a parameter. However, for ease of presentation, we will assume that we have the estimator as a parameter.
+Where $\mathcal{P}$ is the powerset function. When the estimator returns a multi-element set, validators will have an opportunity to choose non-deterministically between consensus values. Because the domain of the estimator has not yet been defined, it is not quite proper for us to ask for the estimator as a parameter. However, for ease of presentation we will assume that we have the estimator as a parameter.
 
 Minimal CBC Casper protocol states will therefore be determined by the choice of these parameters:
 
@@ -235,7 +235,7 @@ Minimal CBC Casper protocol states will therefore be determined by the choice of
 \pagebreak
 \subsection{Protocol Definition}
 
-We will define protocol states ($\Sigma$) as \emph{certain} sets of messages, and messages ($M$) as \emph{certain} triples of the form (consensus value, validator name, protocol state). Our target is therefore something that satisfies these formulas:
+We will define protocol states ($\Sigma$) as \emph{certain} sets of messages, and messages ($M$) as \emph{certain} triples of the form (consensus value, validator name, protocol state). Our target is therefore something that satisfies the following formulas:
 
 \begin{align}
 \Sigma &\subset \mathcal{P}_{finite}(M) \\
@@ -281,12 +281,12 @@ We also restricted the definition of protocol states so that we could have the f
 \end{defn}
 
 
-We will write this as $\sigma \rightarrow \sigma'$ and we will write $\sigma \nrightarrow \sigma'$ when there isn't a state transition from $\sigma$ to $\sigma'$.
+We will write this as $\sigma \rightarrow \sigma'$ and we will write $\sigma \nrightarrow \sigma'$ when there is not a state transition from $\sigma$ to $\sigma'$.
 
 
 We now pivot towards defining the protocol states for the CBC Casper protocol, with fault tolerance threshold $t$, $\Sigma_t \subset \Sigma$. But first, we need to talk about equivocation (a kind of Byzantine fault).
 
-Equivocation faults are a Byzantine behaviour that is fundamentally enough to cause consensus failure in any consensus protocol, and additionally, CBC Casper protocols are guaranteed to be safe as long as not more than $t$ weight of validators are equivocating (and therefore Byzantine).
+Equivocation faults are a Byzantine behaviour that is fundamentally enough to cause consensus failure in any consensus protocol. CBC Casper protocols are guaranteed to be safe as long as not more than $t$ weight of validators are equivocating (and therefore Byzantine).
 
 \begin{defn}[Equivocating messages]
 \begin{align}
@@ -307,7 +307,7 @@ E(\sigma) &:= \{v \in \mathcal{V} : \exists m_1 \in \sigma, \exists m_2 \in \sig
 \end{align}
 \end{defn}
 
-Equivocation corresponds to behaviour that isn't ``single threaded". We will eventually see a lemma showing that non-equivocating validators have at most one latest message.
+Equivocation corresponds to behaviour that is not ``single threaded". We will eventually see a lemma showing that non-equivocating validators have at most one latest message.
 
 Instead of considering the number of equivocations, we measure equivocations by weight:
 
@@ -330,12 +330,13 @@ $$
 
 We think of protocol-following nodes as existing in these protocol states ($\Sigma_t$), and following the protocol state transitions ($\to$) to get from one state to another. If a node at state $\sigma \in \Sigma_t$ receives messages $m$ such that $\sigma \cup \{m\} \in \Sigma$, then they will transition to state $\sigma \cup \{m\}$, if it doesn't expose the node to too many equivocation faults (i.e., as long as $F(\sigma \cup \{m\}) \leq t$).
 
-We are now finished with the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
+We are now finished the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
+
 
 \pagebreak
 \section{Safety Proof}
 
-Our obligation is to provide a way for nodes to make consistent decisions even if they receive different messages, as long as there are less than $t$ equivocation faults in their protocol states. We do this in two steps, first by guaranteeing that nodes will have common future protocol states (as long as there are less than $t$ equivocation faults \emph{in the union of their protocol states}), and then by showing that their decisions on properties of protocol states will be consistent (if they share common future states, which they will if there aren't too many faults). Finally, we will show how this result can be leveraged to guarantee the consistency of decisions on properties of consensus values.
+Our goal is to provide a way for nodes to make consistent decisions even if they receive different messages, as long as there are less than $t$ equivocation faults in their protocol states. We do this in two steps, first by guaranteeing that nodes will have common future protocol states (as long as there are less than $t$ equivocation faults \emph{in the union of their protocol states}), and then by showing that their decisions on properties of protocol states will be consistent (if they share common future states, which they will if there are not too many faults). Finally, we will show how this result can be leveraged to guarantee the consistency of decisions on properties of consensus values.
 
 \subsection{Guaranteeing Common Futures}
 
@@ -397,7 +398,7 @@ F(\sigma_1 \cup \sigma_2) \leq t &\iff \sigma_1 \cup \sigma_2 \in \Sigma_t \\
 \end{align}
 \end{proof}
 
-Note the analagous guarantee that $n$ nodes have a common future if there aren't too many faults in the union of their states:
+Note the analogous guarantee that $n$ nodes have a common future if there aren't too many faults in the union of their states:
 
 \begin{thm}[$n$-party common futures]
 \label{thm:nparty_bft_common_futures}
@@ -417,7 +418,7 @@ We will use this result to ensure the consistency of decisions made by protocol-
 
 \subsection{Guaranteeing Consistent Decisions}
 
-In this section, we will show that if nodes have a common future state, then all of the invariant properties of their protocol states are consistent. We will guarantee consensus safety by insisting that nodes have decided on the invariant properties of their protocol states. We will then leverage the consistency of decisions on properties of protocol states to guarantee the consistency of decisions on properties of consensus values.
+In this section, we show that if nodes have a common future state, then all of the invariant properties of their protocol states are consistent. We guarantee consensus safety by insisting that nodes have decided on the invariant properties of their protocol states. We leverage the consistency of decisions on properties of protocol states to guarantee the consistency of decisions on properties of consensus values.
 
 \subsubsection{Guaranteeing Consistent Decisions on Properties of Protocol States}
 
@@ -429,7 +430,7 @@ P_\Sigma = \{True, False\}^\Sigma  %\text{functions $f$ with signature } f : \Si
 $$
 \end{defn}
 
-We say that the property of a protocol state is called ``decided" from some protocol state if it holds for all future protocol states:
+We say that a property of a protocol state is called ``decided" from some protocol state if it holds for all future protocol states:
 
 \begin{defn}[Decided properties of protocol states]
 \begin{align}
@@ -556,7 +557,7 @@ Then we will say that properties are ``consistent" if they are not inconsistent:
 \iff &\exists \sigma \in \Sigma, \forall q \in Q, q(\sigma)
 \end{align}
 
-Which is to say that a set of properties is consistent if there is at least one protocol state that jointly satisfies all of them:
+Which is to say that a set of properties is consistent if there is at least one protocol state that satisifies each of them:
 
 \begin{defn}[Consistency of properties of protocol states]
 $$ Consistent_\Sigma : \mathcal{P}(P_\Sigma) \to \{True, False\}$$
@@ -607,7 +608,7 @@ Hence $\mathcal{E}(\sigma)$ is a set of consensus values that satisfies all prop
 \end{proof}
 \fi
 
-Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equivocating:
+Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equiocating:
 $$
 \neg Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)) \implies F(\bigcup_{i=1}^n \sigma_i) > t
 $$
@@ -672,7 +673,7 @@ Decided_{\mathcal{C},t}(p, \sigma)&= Decided_{\Sigma,t}(H(p), \sigma)
 \end{align}
 \end{defn}
 
-In addition to deciding on properties of protocol states, nodes can also make decisions on properties of consensus values:
+In addition to deciding on properties of protocol states, nodes can also make decisions on properties of consensus values.
 
 \begin{defn}[Decisions on properties of consensus values]
 $$Decisions_{\mathcal{C},t} : \Sigma_t \to \mathcal{P}(P_{\mathcal{C}})$$
