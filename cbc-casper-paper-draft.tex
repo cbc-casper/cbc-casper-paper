@@ -330,7 +330,7 @@ $$
 
 We think of protocol-following nodes as existing in these protocol states ($\Sigma_t$), and following the protocol state transitions ($\to$) to get from one state to another. If a node at state $\sigma \in \Sigma_t$ receives messages $m$ such that $\sigma \cup \{m\} \in \Sigma$, then they will transition to state $\sigma \cup \{m\}$, if it doesn't expose the node to too many equivocation faults (i.e., as long as $F(\sigma \cup \{m\}) \leq t$).
 
-We are now finished the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
+We are now finished with the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
 
 
 \pagebreak
@@ -484,7 +484,7 @@ Decided_{\Sigma, t}(p,\sigma) &\implies \forall \sigma' \in Futures_t(\sigma), p
 \end{proof}
 \fi
 
-Our second lemma says that if a node has a decided property at some state, then the negation that property must not have been decided at any possible past state.
+Our second lemma says that if a node has a decided property at some state, then the negation of that property must not have been decided at any possible past state.
 
 \begin{lemma}[Backwards consistency]
 \label{lem:backw_safe}
@@ -608,7 +608,7 @@ Hence $\mathcal{E}(\sigma)$ is a set of consensus values that satisfies all prop
 \end{proof}
 \fi
 
-Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equiocating:
+Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equivocating:
 $$
 \neg Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)) \implies F(\bigcup_{i=1}^n \sigma_i) > t
 $$
