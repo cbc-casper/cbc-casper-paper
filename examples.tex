@@ -100,7 +100,7 @@ L_E(\sigma)(v) =& \{Estimate(m): m \in L_M(\sigma)(v)\} \\
 \end{align*}
 \end{defn}
 
-\begin{defn}[Latest message driven estimator]
+\begin{defn}[Latest estimate driven estimator]
 \begin{align*}
 Latest\_Estimate\_Driven:& \mathcal{P}(C)^\Sigma \to \{True, False\} \\
 Latest\_Estimate\_Driven(\mathcal{E}) :\Leftrightarrow& \exists \hat{\mathcal{E}} \in \mathcal{P}(C)^{\mathcal{P}(C)^\mathcal{V}}, ~~\mathcal{E} = \hat{\mathcal{E}} \circ L_E
@@ -299,7 +299,7 @@ Hence, observed validators have latest messages, i.e., $\forall \sigma \in \Sigm
 $
 
 
-\begin{lemma}[Observed non-equivocating validators have one latest messages]
+\begin{lemma}[Observed non-equivocating validators have one latest message]
 $\forall \sigma \in \Sigma, \forall v \in \mathcal{V}$
 $$
 v \in Observed(\sigma) \land v \notin E(\sigma) \implies |L_M(\sigma)(v)| = 1
@@ -748,7 +748,7 @@ $$
 
 We now construct the finality gadgets new forkchoice, which can be understood as GHOST on the epochs, followed by the underlying blockchain's forkchoice from the tip epoch.
 
-As $\mathcal{C}$ is a subset of $B$, we can inherent the blockchain membership relation $\downharpoonright$ from $B$.
+As $\mathcal{C}$ is a subset of $B$, we can inherit the blockchain membership relation $\downharpoonright$ from $B$.
 % \begin{defn}[Blockchain Epoch membership, $m_1 \downharpoonright_c m_2$]
 % \begin{align*}
 % \cdot \downharpoonright_c \cdot&: C \times B \to \{True, False\} \\
