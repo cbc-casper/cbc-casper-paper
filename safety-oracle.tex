@@ -10,9 +10,12 @@ $$
 $$
 Later(m_1, m_2) :\Leftrightarrow m_2 \in Justification(m_1)
 $$
+We may use the infix operator:
+$$
+m_1 < m_2 :\Leftrightarrow m_2 \in Justification(m_1)
+$$
+% what's a better infix operator?
 \end{defn}
-
-%TODO: this would be nice as an infix operator $m_1 Before m_2$, or something similar.
 
 \begin{defn}[From sender]
 $$
@@ -436,7 +439,7 @@ $$
 $\forall \sigma \in \Sigma$,
 \begin{align}
         &v \notin E(\sigma) \land \sigma_1 \in \Sigma ~\land \sigma_1 \subseteq \sigma \land \sigma_2 \subseteq \sigma \land \sigma_1 \cap \sigma_2 = \emptyset \\
-\implies& \forall m_1 \in \sigma_1 : Sender(m) = v, \forall m_2 \in \sigma_2 : Sender(m) = v, m_1 \in Justification(m_2)
+\implies& \forall m_1 \in \sigma_1 : Sender(m_1) = v, \forall m_2 \in \sigma_2 : Sender(m_2) = v, m_1 \in Justification(m_2)
 \end{align}
 Note that $\sigma_2$ is not a protocol state, but just a collection of messages. The notation should probably be changed!
 \end{lemma}
@@ -1033,6 +1036,134 @@ which is enough to complete the proof.
 \end{proof}
 
 
+\begin{lemma}
+$$
+\overline{v} \notin E(\sigma') \implies Later(\overline{m}, !L^H_M(\sigma)(\overline{v}))
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \notin E(\sigma') \\
+  \implies&\overline{v} \notin E(\sigma') \land \sigma \subseteq \sigma' \land \sigma \in \Sigma \land \{\overline{m}\} \subseteq \sigma' \land \sigma \cap \{\overline{m}\} = \emptyset \\
+  \implies&\forall m_1 \in \sigma : Sender(m_1) = \overline{v}, \forall m_2 \in \{\overline{m}\} : Sender(m_2) = \overline{v}, m_1 \in Justification(m_2) \\
+  \implies&\forall m \in \sigma : Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+  \implies&\forall m \in \sigma : Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+          &\land !L^H_M(\sigma)(\overline{v}) \in \sigma \land Sender(!L^H_M(\sigma)(\overline{v})) = \overline{v}\\
+  \implies& !L^H_M(\sigma)(\overline{v}) \in Justification(\overline{m}) \\
+  \implies& Later(\overline{m}, !L^H_M(\sigma)(\overline{v})) \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Nothing later than latest honest message]
+$\forall v \in \mathcal{V}, \forall \sigma \in \Sigma, \forall m \in M$
+$$
+  v \notin E(\sigma) \implies Later\_From(!L^H_M(\sigma)(v), v, \sigma) = \emptyset
+$$
+We note that this lemma is used in some important contradictions above, and should be moved up at some point :)
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &v \notin E(\sigma) \\
+  \implies&L^H_M(\sigma)(v) = L_M(\sigma)(v) \\
+  \implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\} \\
+  \implies&!L^H_M(\sigma)(v) = !\{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\} \\
+  \implies&Later\_From(!L^H_M(\sigma)(v),v,\sigma) = \emptyset
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Later messages for sender is just the new message]
+$$
+\overline{v} \notin E(\sigma') \implies Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{\overline{m}\}
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &\overline{v} \notin E(\sigma') \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma' : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma \cup \{\overline{m}\} : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+        &\cup \{\overline{m} : Sender(\overline{m}) = \overline{v} \land Later(\overline{m}, !L^H_M(\sigma)(\overline{v}))\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+        &\cup \{\overline{m}\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma) \cup \{\overline{m}\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \emptyset \cup \{\overline{m}\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{\overline{m}\} \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Later disagreeing is monotonic]
+$\forall v \in V, \forall \sigma \in \Sigma, \forall m_1 \in M$,
+$$
+  m_1 \in Justification(m_2) \implies Later\_Disagreeing(p,m_2,v,\sigma) \subseteq Later\_Disagreeing(p,m_1,v,\sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &m_1 \in Justification(m_2) \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in Later\_From(m_2, v, \sigma) : \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \{m'' \in \sigma : Sender(m'') = v \land Later(m'', m_2)\} : \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land Later(m', m_2) \land \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+        &\land \forall m \in M, m_1 \in Justification(m_2) \implies (Later(m, m_2) \implies Later(m, m_1)) \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+        &\land \forall m \in M, Later(m, m_2) \implies Later(m, m_1) \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+        &\land \{m' \in \sigma : Later(m', m_2)\} \subseteq \{m' \in \sigma : Later(m', m_1)\} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) \subseteq \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_1)\} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) \subseteq \{m' \in \sigma : Sender(m') = v \land Later(m', m_1) \land \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) \subseteq Later\_Disagreeing(p,m_1,v,\sigma) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}
+\begin{align}
+          &\overline{v} \notin E(\sigma') \land v' \notin E(\sigma) \\
+          &Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+  \implies&Later\_Disagreeing(p,~!L^H_M(Justification(\overline{m}))(v'), v', \sigma') = \emptyset \\
+\end{align}
+\end{lemma}
+
+
+
+\begin{proof}
+Recall the previous result:
+\begin{align}
+          &\overline{v} \notin E(\sigma') \land v' \notin E(\sigma) \\
+  \implies&!L^H_M(Justification(\overline{m}))(v') = !L^H_M(!L^H_J(\sigma)(\overline{v}))(v') \\
+          &\lor Later(!L^H_M(Justification(\overline{m}))(v'),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v')) \\
+\end{align}
+
+We will handle each case:
+
+\begin{align}
+          &Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &\land !L^H_M(Justification(\overline{m}))(v') = !L^H_M(!L^H_J(\sigma)(\overline{v}))(v') \\
+  \implies&Later\_Disagreeing(p, !L^H_M(Justification(\overline{m}))(v'), v', \sigma) = \emptyset \\
+\end{align}
+
+In the second case:
+\begin{align}
+          &Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &\land Later(!L^H_M(Justification(\overline{m}))(v'),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v')) \\
+  \implies&Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &\land !L^H_M(!L^H_J(\sigma)(\overline{v}))(v') \in Justification(!L^H_M(Justification(\overline{m}))(v')) \\
+  \implies&Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &Later\_Disagreeing(p,!L^H_M(Justification(\overline{m}))(v'),v',\sigma) \subseteq Later\_Disagreeing(p,!L^H_M(!L^H_J(\sigma)(\overline{v}))(v'),v',\sigma) \\
+  \implies&Later\_Disagreeing(p,!L^H_M(Justification(\overline{m}))(v'),v',\sigma) \subseteq \emptyset \\
+  \implies&Later\_Disagreeing(p,!L^H_M(Justification(\overline{m}))(v'),v',\sigma) = \emptyset \\
+\end{align}
+
+Thus concluding the proof.
+\end{proof}
+
+
 \begin{lemma}[New non-equivocating latest messages from members of majority clique don't break the clique]
 $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p), \forall \sigma \in \Sigma_t, \forall (\sigma, \sigma') \in Minimal_t,\forall V \subseteq \mathcal{V}$, letting $\overline{m} =~!\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
 
@@ -1101,11 +1232,7 @@ And then:
 =& \emptyset
 \end{align}
 
-TODO: the above proof is not finished. We need to show that $Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{\overline{m}\}$.
-
-
 \textbf{4:} $\forall v \in \{\overline{v}\}, \forall v' \in V \setminus \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset$
-
 
 Again, first observe
 \begin{align}
@@ -1128,10 +1255,8 @@ $\forall v' \in V \setminus \{\overline{v}\}$
   &= \{m \in Later\_From(!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma) : \neg p(Estimate(m)) \} \\
   &= Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma) \\
   &= Later\_Disagreeing(p,~!L^H_M(Justification(\overline{m}))(v'), v', \sigma) \\
-  &= \emptyset \\
+  &= \emptyset \\ % by above lemmas
 \end{align}
-
-TODO: the last step seems needs arguing here as well, although it is true.
 
 \textbf{5:} $\forall v \in V \setminus \{\overline{v}\}, \forall v' \in \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset$
 
@@ -1187,10 +1312,6 @@ Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\si
 
 \subsection{Equivocations from Validators in Clique do not break cliques}
 
-This section no longer really makes. We want to introduce a clique oracle, and then say that a validator in a clique oracle equivocating preserves a sub clique oracle.
-
-The other option is to change the clique definition such that it only includes the non equivocating validators. It's just a lot less machinery to handle, than including it in the clique definition.
-
 \begin{defn}[One layer clique oracle threshold size]
 \begin{align}
 Threshold_t&: \mathcal{P}(\mathcal{V}) \times \Sigma_t \to \{True, False\} \\
@@ -1216,6 +1337,7 @@ Threshold_t(V, \sigma) &:\Leftrightarrow Weight(V) > Weight(\mathcal{V})/2 + t -
 \end{proof}
 
 
+
 \begin{defn}[Clique oracle with $n$ layers]
 \begin{align}
 Clique\_Oracle_t&: \mathcal{P}(\mathcal{V}) \times \Sigma_t \to \{True, False\} \\
@@ -1224,6 +1346,87 @@ Clique\_Oracle_t(n, V, \sigma, p) &:\Leftrightarrow Clique(n, V \setminus E(\sig
 \end{defn}
 
 We now argue the following:
+
+\begin{lemma}[Clique oracles preserved over minimal transitions from validators not in clique]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  \overline{v} \notin V \setminus E(\sigma) \land Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \notin V \setminus E(\sigma) \land Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&\overline{v} \notin V \setminus E(\sigma) \land Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, (v \in E(\sigma) \iff v \in E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land \forall v \in V \setminus E(\sigma), (v \in E(\sigma) \iff v \in E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land V \setminus E(\sigma) = V \setminus E(\sigma') \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+          &\land V \setminus E(\sigma) = V \setminus E(\sigma') \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+          &\land \sigma \subseteq \sigma' \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+          &\land Weight(E(\sigma)) \leq Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+  \implies&Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Clique oracles preserved over minimal transitions from non-equivocating validators]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  \overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land \forall v \in V, Majority^H(V, !L^H_J(\sigma)(v)) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land V \setminus E(\sigma) = V \setminus E(\sigma') \land Weight(E(\sigma)) \leq Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+  \implies&Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Clique oracles preserved over minimal transitions from non-equivocating validators]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  \overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma)) - W(\overline{v}) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) - W(\overline{v}) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma)) - W(\overline{v}) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) - W(\overline{v}) \\
+          &\land V \setminus E(\sigma') = V \setminus E(\sigma) \cup \{\overline{v}\} \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+  \implies&Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+
+Thus, we are finially ready a our major result:
 
 
 \begin{lemma}[Clique oracles preserved over minimal transitions]
@@ -1234,61 +1437,14 @@ We now argue the following:
 \end{lemma}
 
 \begin{proof}
-  There are three cases we must consider: $\overline{v} \notin V \setminus E(\sigma), \overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma'), \overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma')$. We note that these proofs may be missing lemmas, etc - but we are just trying to confirm to ourselves that this actually works!
-
-  \textbf{1:} $\overline{v} \notin V \setminus E(\sigma)$
-
-  \begin{align}
-    &Clique\_Oracle_t(1, V, \sigma, p) \\
-    \implies& Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
-            & \land \overline{v} \notin V \setminus E(\sigma) \land V \setminus E(\sigma) = V \setminus E(\sigma')\\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
-            & \land Weight(E(\sigma)) \leq Weight(E(\sigma')) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma') \\
-            & \land V \setminus E(\sigma) = V \setminus E(\sigma') \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
-    \implies& Clique\_Oracle_t(1, V, \sigma', p) \\
-  \end{align}
-
-
-  \textbf{2:} $\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma')$
-
-
-  \begin{align}
-    &Clique\_Oracle_t(1, V, \sigma, p) \\
-    \implies& Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
-            & \land \overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \\
-            & \forall v \in V, Majority^H(V \setminus E(\sigma), !L^H_J(\sigma)(v))) \\
-    \implies& Clique(1, V \setminus E(\sigma), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
-            & \land V \setminus E(\sigma) = V \setminus E(\sigma') \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
-            & \land Weight(E(\sigma)) = Weight(E(\sigma')) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma') \\
-            & \land V \setminus E(\sigma) = V \setminus E(\sigma') \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
-    \implies& Clique\_Oracle_t(1, V, \sigma, p) \\
-  \end{align}
-
-  \textbf{3:} $\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma')$
-
-  \begin{align}
-    &Clique\_Oracle_t(1, V, \sigma, p) \\
-    \implies& Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
-            & \land \overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \\
-    \implies& Clique(1, V \setminus E(\sigma) \setminus {\overline{v}}, \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
-            & \land V \setminus E(\sigma) \setminus {\overline{v}} = V \setminus E(\sigma') \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \\
-            & \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \\
-            & \land Weight(V \setminus E(\sigma)) - W(\overline{v}) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) - W(\overline{v}) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \\
-            & \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
-    \implies& Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma')\\
-    \implies& Clique\_Oracle_t(1, V, \sigma, p) \\
-  \end{align}
+\begin{align}
+          &Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&Clique\_Oracle_t(1, V, \sigma, p) \land (\overline{v} \notin V \setminus E(\sigma) \lor \overline{v} \in V \setminus E(\sigma)) \\
+  \implies&Clique\_Oracle_t(1, V, \sigma, p) \land (\overline{v} \not V \setminus E(\sigma) \lor \\
+          &(\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \lor \overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma')) \\
+  \implies&(Clique\_Oracle_t(1, V, \sigma', p) \lor (Clique\_Oracle_t(1, V, \sigma', p) \lor Clique\_Oracle_t(1, V, \sigma', p)) \\
+  \implies&(Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
 \end{proof}
 
 We now show that if there is a clique, then everyone in the clique is agreeing in the current protocol state.
@@ -1355,7 +1511,7 @@ Clique(1, V \setminus E(\sigma), p, \sigma) \land Threshold_t(V \setminus E(\sig
 \end{proof}
 
 
-Now, using the axiom of induction, we can show that when a $1$ layer clique oracle exists, it exists in all futures.
+Now, with induction, we can show that when a $1$ layer clique oracle exists, it exists in all futures.
 
 
 \begin{lemma}[Cliques exist in all futures]
