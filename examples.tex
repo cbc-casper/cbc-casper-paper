@@ -259,15 +259,15 @@ Let $m$ be a minimal element in $(From\_Sender(v, \sigma), \preceq)$. Then $m$ i
   \\
   \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), Justification(m) \cup \{m\} \subseteq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
   \\
-  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq |Justification(m^*)| \\ &\land |Justification(m)| \geq |Justification(m^*)|
   \\
-  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq Justification(m^*) \\ &\land Justification(m) \cap \{m\} = \emptyset \land |Justification(m)| \geq |Justification(m^*)|
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq |Justification(m^*)| \\ &\land Justification(m) \cap \{m\} = \emptyset \land |Justification(m)| \geq |Justification(m^*)|
   \\
-  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq Justification(m^*) \\ &\land |Justification(m) \cap \{m\}| = 0 \land |Justification(m)| \geq |Justification(m^*)|
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| - |Justification(m) \cap \{m\}| \leq |Justification(m^*)| \\ &\land |Justification(m) \cap \{m\}| = 0 \land |Justification(m)| \geq |Justification(m^*)|
   \\
-  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| \leq Justification(m^*) \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| \leq |Justification(m^*)| \\ &\land |Justification(m)| \geq |Justification(m^*)|
   \\
-  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| \leq Justification(m^*) \land |\{m\}| \geq 1 \\ &\land |Justification(m)| \geq |Justification(m^*)|
+  \Longrightarrow& \exists m^* \in Later\_From(m, v, \sigma), |Justification(m)| + |\{m\}| \leq |Justification(m^*)| \land |\{m\}| \geq 1 \\ &\land |Justification(m)| \geq |Justification(m^*)|
 \end{align*}
 
 This leads to a contradiction in these three inequalities. Therefore, a minimal message in $From\_Sender(v, \sigma)$ is a latest message from validator $v$.
