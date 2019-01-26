@@ -216,7 +216,7 @@ The final parameter, called ``the estimator", relates CBC Casper protocol states
 \begin{defn}[Estimator]
 A function
 $$
-\mathcal{E}: \Sigma \to \mathcal{P}(\mathcal{C})\setminus\emptyset
+\mathcal{E}: \Sigma \to \mathcal{P}(\mathcal{C})\setminus\{\emptyset\}
 $$
 \end{defn}
 
@@ -267,7 +267,7 @@ We can construct finite protocol states that satisfy these equations by using th
 \end{align}
 \end{defn}
 
-The type signature of the estimator is $\mathcal{E} : \Sigma \to \mathcal{P}(\mathcal{C}) \setminus \emptyset$, causing possible concern due to our application of $\mathcal{E}$ to $Justification(m) \in \Sigma^n \neq \Sigma$. However we note that $\Sigma^n \subset \Sigma$, meaning that $\mathcal{E}$ is defined over $\Sigma^n$.
+The type signature of the estimator is $\mathcal{E} : \Sigma \to \mathcal{P}(\mathcal{C}) \setminus \{\emptyset\}$, causing possible concern due to our application of $\mathcal{E}$ to $Justification(m) \in \Sigma^n \neq \Sigma$. However we note that $\Sigma^n \subset \Sigma$, meaning that $\mathcal{E}$ is defined over $\Sigma^n$.
 
 Note that we explicitly restricted protocol messages to only have consensus values from the estimator, allowing validators to make a choice between values of the consensus when the the estimator returns a multi-element set (but not otherwise).
 
@@ -634,7 +634,7 @@ H(p) &:\Leftrightarrow \lambda \sigma . \forall c \in \mathcal{E}(\sigma), p(c)
 \end{align}
 \end{defn}
 
-For example, if we have an estimator for a binary consensus protocol, which has function signature $\mathcal{E}: \Sigma \to \mathcal{P}(\{0,1\})\setminus \emptyset$, and the property of consensus values $p \in P_{\{0, 1\}}$ with $p(0) = True$ and $p(1) = False$, then $H(p)$ is defined to be satisifed by a protocol state $\sigma$ if $\mathcal{E}(\sigma) = \{0\}$, but not if $\mathcal{E}(\sigma) = \{1\}$ or $\mathcal{E}(\sigma) = \{0, 1\}$.
+For example, if we have an estimator for a binary consensus protocol, which has function signature $\mathcal{E}: \Sigma \to \mathcal{P}(\{0,1\})\setminus \{\emptyset\}$, and the property of consensus values $p \in P_{\{0, 1\}}$ with $p(0) = True$ and $p(1) = False$, then $H(p)$ is defined to be satisifed by a protocol state $\sigma$ if $\mathcal{E}(\sigma) = \{0\}$, but not if $\mathcal{E}(\sigma) = \{1\}$ or $\mathcal{E}(\sigma) = \{0, 1\}$.
 
 We will define the consistency of properties of consensus values in the same way that we defined consistency of properties of protocol states, namely that they are consistent if there is a value of the consensus that satisifes all of them:
 
