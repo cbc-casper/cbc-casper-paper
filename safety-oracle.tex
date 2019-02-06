@@ -1,0 +1,1552 @@
+\section{Safety Oracles}
+Here, we present a minimum-viable safety oracle, and prove that it is sufficient to detect safety in some situations.
+
+\subsection{Preliminary Definitions}
+
+\begin{defn}[Later]
+$$
+Later:M \times M \to \{True, False\}
+$$
+$$
+Later(m_1, m_2) :\Leftrightarrow m_2 \in Justification(m_1)
+$$
+We may use the infix operator:
+$$
+m_1 < m_2 :\Leftrightarrow m_2 \in Justification(m_1)
+$$
+% what's a better infix operator?
+\end{defn}
+
+\begin{defn}[From sender]
+$$
+From\_Sender: \mathcal{V} \times \mathcal{P}(M) \to \mathcal{P}(M)
+$$
+$$
+From\_Sender(v, \sigma) = \{m \in \sigma : Sender(m) = v\}
+$$
+\end{defn}
+
+\begin{defn}[Later messages from sender]
+$$
+Later\_From: M \times \mathcal{V} \times \mathcal{P}(M) \to \mathcal{P}(M)
+$$
+$$
+Later\_From(m, v, \sigma) = \{m' \in \sigma : Sender(m') = v \land Later(m', m)\}
+$$
+\end{defn}
+
+\begin{defn}[Latest messages]
+$$
+L_M:\Sigma \to (\mathcal{V} \to \mathcal{P}(M))
+$$
+$$
+L_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\}
+$$
+\end{defn}
+
+
+\begin{defn}[Latest messages from non-Equivocating validators]
+$$
+L^H_M:\Sigma \to (\mathcal{V} \to \mathcal{P}(M))
+$$
+\[ L^H_M(\sigma)(v) = \left\{
+\begin{array}{ll}
+      \emptyset& \text{ for } v \in E(\sigma) \\
+      L_M(\sigma)(v)& \text{ otherwise }
+\end{array}
+\right. \]
+\end{defn}
+
+Note that the map returned by this function has values $L^H_M(\sigma)(v) = \emptyset$ for any validators who are equivocating in $\sigma$ or who don't have any messages in $\sigma$.
+
+\begin{defn}[Latest Estimates from non-Equivocating validators]
+$$
+L^H_E:\Sigma \to (\mathcal{V} \to \mathcal{P}(\mathcal{C}))
+$$
+$$
+L^H_E(\sigma)(v) = \{Estimate(m) : m \in L^H_M(\sigma)(v)\}
+$$
+\end{defn}
+
+As above, $L^H_E(\sigma)(v) = \emptyset$ for validators $v$ who are equivocating or missing in $\sigma$.
+
+
+\begin{defn}[Latest justifications from non-Equivocating validators]
+$$
+L^H_J:\Sigma \to (\mathcal{V} \to \mathcal{P}(\Sigma))
+$$
+$$
+L^H_J(\sigma)(v) = \{Justification(m) : m \in L^H_M(\sigma)(v)\}
+$$
+\end{defn}
+
+
+The validators whose latest estimates agree with some proposition $p$ in some protocol state $\sigma$ is denoted formally as follows
+\begin{defn}[Validators agreeing with $p$ in $\sigma$]
+$$
+Agreeing: P_{\mathcal{C}} \times \Sigma \to \mathcal{P}(\mathcal{V})
+$$
+$$
+Agreeing(p, \sigma) :\Leftrightarrow \{v \in \mathcal{V} : \forall c \in L^H_E(\sigma)(v), p(c)\}
+$$
+\end{defn}
+
+Similarly, we will define the set of validators validators whose latest estimates \emph{disagree} with $p$ in some protocol state $\sigma$:
+\begin{defn}[Validators disagreeing with $p$ in $\sigma$]
+$$
+Disagreeing: P_{\mathcal{C}} \times \Sigma \to \mathcal{P}(\mathcal{V})
+$$
+$$
+Disagreeing(p, \sigma) :\Leftrightarrow \{v \in \mathcal{V} : \exists c \in L^H_E(\sigma)(v), \neg p(c)\}
+$$
+\end{defn}
+
+For convenience, we will derive a discrete weights measure from $W$, so that we can easily refer to the total weight of a set of validators.
+
+\begin{defn}[Weight measure]
+$$
+Weight: \mathcal{P}(\mathcal{V}) \to \mathbb{R}_+
+$$
+$$
+Weight(V) :\Leftrightarrow \sum_{v \in V} \mathcal{W}(v)
+$$
+\end{defn}
+
+
+\begin{defn}[Non-equivocating majority driven property]
+$$
+Majority^H: \mathcal{P}(\mathcal{V}) \times \Sigma \to \{True, False\}
+$$
+$$
+Majority^H(V, \sigma) :\Leftrightarrow Weight(V) > Weight(\mathcal{V} \setminus E(\sigma))/2
+$$
+\end{defn}
+
+\begin{defn}[Non-equivocating majority driven property] % to be redefined in terms of Majority^H ?
+$$
+Majority\_Driven^H: P_{\mathcal{C}} \to \{True, False\}
+$$
+$$
+Majority\_Driven^H(p) :\Leftrightarrow \forall \sigma \in \Sigma, Majority^H(Agreeing(p, \sigma), \sigma) \implies \forall c \in \mathcal{E}(\sigma), p(c)
+$$
+\end{defn}
+
+\begin{defn}[Max weight driven property]
+$$
+Max\_Driven: P_{\mathcal{C}} \to \{True, False\}
+$$
+$$
+Max\_Driven(p) :\Leftrightarrow \forall \sigma \in \Sigma, Weight(Agreeing(p, \sigma)) > Weight(Disagreeing(p, \sigma)) \implies \forall c \in \mathcal{E}(\sigma), p(c)
+$$
+\end{defn}
+
+
+\begin{defn}[Later disagreeing messages]
+$$
+Later\_Disagreeing: P_{\mathcal{C}} \times M \times \mathcal{V} \times \Sigma \to \mathcal{P}(M)
+$$
+$$
+Later\_Disagreeing(p,m,v,\sigma) = \{m' \in Later\_From(m, v, \sigma) : \neg p(Estimate(m')) \}
+$$
+\end{defn}
+
+Since non-equivocating validators have not more than one latest message/estimate, we will define the following higher level helper function:
+
+\begin{defn}
+$$
+!: \mathcal{P}(X) \to X
+$$
+$$
+!(A) = a \in A : \forall b \in A, b = a
+$$
+\end{defn}
+
+This function is not defined when its argument is not singleton (i.e. when is multi-element or the empty set).
+
+\subsection{Validator Cliques}
+
+A clique of validators for some proposition $p$ can be thought of as a set of validators who pairwise see eachother agreeing with $p$, where there are also no later messages from these validators that are disagreeing with $p$. A clique can have mulitple layers, although the minimum viable safety oracle will only be $1-layer$ deep. \\
+
+\begin{defn}[Clique with $n$ layers]
+\begin{align}
+Clique&: \mathbb{N}^+ \times \mathcal{P}(\mathcal{V}) \times P_{\mathcal{C}} \times \Sigma \to \{True, False\} \\
+Clique(1, V, p, \sigma) &:\Leftrightarrow \forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma)(v)) \\
+&~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset \\
+Clique(n, V, p, \sigma) &:\Leftrightarrow \forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma)(v)) \\
+&~~~~\land \forall v \in V, Clique\_Cond(n - 1, V, p, L^H_J(\sigma)(v))
+\end{align}
+\end{defn}
+
+
+\subsection{Cliques Survive Messages from Validators Outside Clique}
+
+First, we define minimal transitions:
+
+\begin{defn}[Minimal transitions]
+$$
+Minimal_t = \{ (\sigma, \sigma') \in \Sigma_t^2: \sigma \to \sigma' \land \nexists \sigma'' . \sigma \to \sigma'' \to \sigma' \land \sigma'' \neq \sigma \land \sigma'' \neq \sigma' \}
+$$
+\end{defn}
+
+A minimal transition corresponds to recieving a single new message with justification drawn from the initial protocol state. We will show that any minimal transition from a validator not in the clique will not affect the clique.
+
+We now will show that minimal transitions don't affect later messages, equivocation status, latest messages, or later disagreeing messages of validators that are not the sender of the minimal transition.
+
+\begin{lemma}[Minimal transitions do not change Later\_From for any non-sender]
+$\forall (\sigma, \sigma') \in Minimal_t, \forall m \in M$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$,
+$$
+\forall v \in \mathcal{V} \setminus \{\overline{v}\}, Later\_From(m,v,\sigma) = Later\_From(m,v,\sigma')
+$$
+\end{lemma}
+
+
+\begin{proof}
+$\forall v \in \mathcal{V} \setminus \{\overline{v}\}$
+\begin{align}
+ &Later\_From(m,v,\sigma) \\
+=&\{m' \in \sigma : Sender(m') = v \land Later(m', m)\} \\
+=&\{m' \in \sigma : Sender(m') = v \land Later(m', m)\} \cup \emptyset \\
+=&\{m' \in \sigma : Sender(m') = v \land Later(m', m)\} \cup \{m' \in \{\overline{m}\}: Sender(m') = v\} \\
+=&\{m' \in \sigma : Sender(m') = v \land Later(m', m)\} \cup \{m' \in \{\overline{m}\}: Sender(m') = v \land Later(m', m)\} \\
+=&\{m' \in \sigma \cup \{\overline{m}\} : Sender(m') = v \land Later(m', m)\} \\
+=&\{m' \in \sigma' : Sender(m') = v \land Later(m', m)\} \\
+=&Later\_From(m,v,\sigma')
+\end{align}
+\end{proof}
+
+\begin{lemma}[Minimal transitions do not change equivocation status for any non-sender]
+$\forall (\sigma, \sigma') \in Minimal_t$, letting $\overline{m} =~!\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+$$
+\forall v \in \mathcal{V} \setminus \{\overline{v}\}, (v \in E(\sigma) \iff v \in E(\sigma'))
+$$
+\end{lemma}
+
+\begin{proof}
+The forward direction, $v \in E(\sigma) \implies v \in E(\sigma')$, follows immediatly as equivocation is monotonic,
+\begin{align}
+        &v \in E(\sigma) \\
+\implies&v \in E(\sigma) \land \sigma \to \sigma' \\
+\implies&v \in E(\sigma) \land \sigma \subseteq \sigma' \\
+\implies&v \in E(\sigma')&
+\end{align}
+
+
+The backwards direction, $v \in E(\sigma') \implies v \in E(\sigma)$,
+\begin{align}
+        &v \in E(\sigma') \\
+\implies& v \in \{v' \in \mathcal{V}: \exists m_1 \in \sigma', \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v' \} \\
+\implies& \exists m_1 \in \sigma', \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v \\
+\implies& \exists m_1 \in \sigma', \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \\
+\implies& \exists m_1 \in \sigma \cup \{\overline{m}\}, \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \\
+\implies& \exists m_1 \in \sigma, \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \\
+        &\lor (\exists m_2 \in \sigma', \overline{m} \perp m_2 \land Sender(\overline{m}) = v \land Sender(\overline{m}) \neq v) \\
+\implies& \exists m_1 \in \sigma, \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \lor False \\
+\implies& \exists m_1 \in \sigma, \exists m_2 \in \sigma', m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \\
+\implies& \exists m_1 \in \sigma, \exists m_2 \in \sigma \cup \{\overline{m}\}, m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \\
+\implies& \exists m_1 \in \sigma, (\exists m_2 \in \sigma, m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \\
+        &\lor (m_1 \perp \overline{m} \land Sender(m_1) = v \land Sender(\overline{m}) \neq v) \\
+\iff& \exists m_1 \in \sigma, (\exists m_2 \in \sigma, m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v\\
+        &\lor (m_1 \perp \overline{m} \land Sender(m_1) = v \land Sender(m_1) = Sender(\overline{m}) \land Sender(\overline{m}) \neq v) \\
+\iff& \exists m_1 \in \sigma, \exists m_2 \in \sigma, m_1 \perp m_2 \land Sender(m_1) = v \land Sender(\overline{m}) \neq v \lor False \\
+\implies& \exists m_1 \in \sigma, \exists m_2 \in \sigma, m_1 \perp m_2 \land Sender(m_1) = v \\
+\implies& v \in \{ v' \in \mathcal{V} : \exists m_1 \in \sigma, \exists m_2 \in \sigma, m_1 \perp m_2 \land Sender(m_1) = v' \} \\
+\implies& v \in E(\sigma)
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Minimal transitions do not change latest messages for any non-sender]
+$\forall (\sigma, \sigma') \in Minimal_t$, letting $\overline{m} =~!\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$
+$$
+\forall v \in \mathcal{V} \setminus \{\overline{v}\}, L^H_M(\sigma)(v) = L^H_M(\sigma')(v)
+$$
+\end{lemma}
+
+\begin{proof}
+Due to the definition of $L^H_M$, there are two cases: when $v \in E(\sigma)$ and otherwise:
+
+\[ L^H_M(\sigma))(v) = \left\{
+\begin{array}{ll}
+      \emptyset& \text{ for } v \in E(\sigma) \\
+      L_M(\sigma)(v) \text{ otherwise }
+\end{array}
+\right.\]
+
+Case 1, $\forall v \in \mathcal{V} \setminus \{\overline{v}\} : v \in E(\sigma)$:
+
+\begin{align}
+&L^H_M(\sigma)(v) = \emptyset \\
+\implies&L^H_M(\sigma)(v) = \emptyset \land (v \in E(\sigma) \iff v \in E(\sigma')) \\
+\implies&L^H_M(\sigma)(v) = \emptyset \land v \in E(\sigma') \\
+\implies&L^H_M(\sigma)(v) = \emptyset \land L^H_M(\sigma')(v) = \emptyset \\
+\implies&L^H_M(\sigma)(v) = L^H_M(\sigma')(v) \\
+\end{align}
+
+Case 2, $\forall v \in \mathcal{V} \setminus \{\overline{v}\} : v \notin E(\sigma)$:
+
+\begin{align}
+        &L^H_M(\sigma)(v) = L_M(\sigma)(v) \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\} \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\} \\
+        &\land \forall m^* \in M, Later\_From(m^*,v,\sigma) = Later\_From(m^*,v,\sigma')\\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+        &\cup \emptyset \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+        &\cup \{m \in \{\overline{m}\} : Sender(m) = v\} \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+        &\cup \{m \in \{\overline{m}\} : Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma \cup \{\overline{m}\}: Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma)(v) = \{m \in \sigma': Sender(m) = v ~\land~ Later\_From(m,v,\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma)(v) = L^H_M(\sigma')(v)
+\end{align}
+\end{proof}
+
+\begin{lemma}[Minimal transitions do not change latest justification for any non-sender]
+$\forall (\sigma, \sigma') \in Minimal_t$, letting $\overline{m} =~!\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$
+$$
+\forall v \in \mathcal{V} \setminus \{\overline{v}\}, L^H_J(\sigma)(v) = L^H_J(\sigma')(v)
+$$
+\end{lemma}
+
+\begin{proof}
+  $\forall v \in \mathcal{V} \setminus \{\overline{v}\}$,
+  \begin{align}
+            &L^H_J(\sigma)(v) = \{Justification(m) : m \in L^H_M(\sigma)(v)\} \\
+    \implies&L^H_J(\sigma)(v) = \{Justification(m) : m \in L^H_M(\sigma)(v)\} \\
+            &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, L^H_M(\sigma)(v) = L^H_M(\sigma')(v) \\
+    \implies&L^H_J(\sigma)(v) = \{Justification(m) : m \in L^H_M(\sigma')(v)\} \\
+    \implies&L^H_J(\sigma)(v) = L^H_J(\sigma')(v) \\
+  \end{align}
+\end{proof}
+
+
+
+\begin{lemma}[Minimal transitions do not change Later\_Disagreeing for any non-sender]
+$\forall p \in P_{\mathcal{C}}, \forall (\sigma, \sigma') \in Minimal_t, \forall m \in M$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$
+$$
+\forall v \in \mathcal{V} \setminus \{\overline{v}\}, Later\_Disagreeing(p, m, v, \sigma) = Later\_Disagreeing(p, m, v, \sigma')
+$$
+\end{lemma}
+
+\begin{proof}
+$\forall v \in \mathcal{V} \setminus \{\overline{v}\},$
+\begin{align}
+Later\_Disagreeing(p, m, v, \sigma) &= \{m' \in Later\_From(m, v, \sigma) : \neg p(Estimate(m')) \} \\
+\implies Later\_Disagreeing(p, m, v, \sigma) &= \{m' \in Later\_From(m, v, \sigma) : \neg p(Estimate(m')) \} \\
+~~\land \forall m^* \in M, Later\_From(m^*,v,\sigma) &= Later\_From(m^*,v,\sigma') \\
+\implies Later\_Disagreeing(p, m, v, \sigma) &= \{m' \in Later\_From(m, v, \sigma') : \neg p(Estimate(m')) \} \\
+\implies Later\_Disagreeing(p, m, v, \sigma) &= Later\_Disagreeing(p, m, v, \sigma') \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Minimal transition from outside clique maintains clique]
+$\forall p \in P_{\mathcal{C}}, \forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$
+$$
+\overline{v} \notin V \land Clique(1, V, p, \sigma) \implies Clique(1, V, p, \sigma')
+$$
+\end{lemma}
+
+\begin{proof}
+  \begin{align}
+    &\overline{v} \notin V \land Clique(1, V, p, \sigma) \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma)(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset] \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma)(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset] \\
+            &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, L^H_J(\sigma)(v) = L^H_J(\sigma')(v) \\
+            &\land V \subseteq \mathcal{V} \setminus \{\overline{v}\} \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma)(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset] \\
+            &\land \forall v \in V, L^H_J(\sigma)(v) = L^H_J(\sigma')(v) \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma')(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma')(v))(v'), v', \sigma) = \emptyset] \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma')(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma')(v))(v'), v', \sigma) = \emptyset] \\
+            &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, \forall m \in M, Later\_Disagreeing(p, m, v, \sigma) = Later\_Disagreeing(p, m, v, \sigma') \\
+            &\land V \subseteq \mathcal{V} \setminus \{\overline{v}\} \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma')(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma')(v))(v'), v', \sigma) = \emptyset] \\
+            &\land \forall v \in V, \forall m \in M, Later\_Disagreeing(p, m, v, \sigma) = Later\_Disagreeing(p, m, v, \sigma') \\
+    \implies& \overline{v} \notin V \land [\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma')(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset] \\
+    \implies& Clique(1, V, p, \sigma') \\
+  \end{align}
+\end{proof}
+
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+
+
+\subsection{Majority Cliques Survive Honest Messages from Validators in Clique}
+
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+
+
+\subsubsection{New messages at least leaves a smaller clique behind}
+
+\begin{lemma}[Free sub-clique]
+$\forall p \in P_{\mathcal{C}}, \forall V \subseteq \mathcal{V}, \forall (\sigma, \sigma') \in Minimal_t$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$,
+
+$$
+Clique(1, V, p, \sigma) \implies Clique(1, V \setminus \{\overline{v}\}, p, \sigma')
+$$
+\end{lemma}
+
+
+\begin{proof}
+\begin{align}
+&Clique(1, V, p, \sigma)  \\
+\implies& \forall v \in V, V \subseteq Agreeing(p, !L^H_J(\sigma)(v)) \\
+        &~~~~~ \land \forall v' \in V,Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset \\
+\implies& \forall v \in V, V \subseteq Agreeing(p, !L^H_J(\sigma)(v)) \\
+        &~~~~~ \land \forall v' \in V,Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset \\
+        &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, L^H_J(\sigma)(v) = L^H_J(\sigma')(v) \\
+        &\land V \setminus \{\overline{v}\} \subseteq \mathcal{V} \setminus \{\overline{v}\} \\
+\implies& \forall v \in V, V \subseteq Agreeing(p, !L^H_J(\sigma)(v)) \\
+        &~~~~~ \land \forall v' \in V,Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset \\
+        &\land \forall V \setminus \{\overline{v}\}, L^H_J(\sigma)(v) = L^H_J(\sigma')(v) \\
+\implies& \forall v \in V \setminus \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~ \land \forall v' \in V \setminus \{\overline{v}\},Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma) = \emptyset \\
+\implies& \forall v \in V \setminus \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~ \land \forall v' \in V \setminus \{\overline{v}\},Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma) = \emptyset \\
+        &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, \forall m \in M, Later\_Disagreeing(p, m, v, \sigma) = Later\_Disagreeing(p, m, v, \sigma') \\
+        &\land V \setminus \{\overline{v}\} \subseteq \mathcal{V} \setminus \{\overline{v}\} \\
+\implies& \forall v \in V \setminus \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~ \land \forall v' \in V \setminus \{\overline{v}\},Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma) = \emptyset \\
+        &\land \forall v \in V \setminus \{\overline{v}\}, \forall m \in M, Later\_Disagreeing(p, m, v, \sigma) = Later\_Disagreeing(p, m, v, \sigma') \\
+\implies& \forall v \in V \setminus \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~ \land \forall v' \in V \setminus \{\overline{v}\},Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+\implies& \forall v \in V \setminus \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~ \land \forall v' \in V \setminus \{\overline{v}\},Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+        &\land V \setminus \{\overline{v}\} \subseteq V \\
+\implies& \forall v \in V \setminus \{\overline{v}\}, V \setminus \{\overline{v}\} \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~ \land \forall v' \in V \setminus \{\overline{v}\},Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+\implies& Clique(1, V \setminus \{\overline{v}\}, p, \sigma') \\
+\end{align}
+\end{proof}
+
+
+\subsubsection{Non-equivocating messages from clique members see clique agree}
+\begin{lemma}[Later messages from a non-equivocating validator include all earlier messages]
+$\forall \sigma \in \Sigma$,
+\begin{align}
+        &v \notin E(\sigma) \land \sigma_1 \in \Sigma ~\land \sigma_1 \subseteq \sigma \land \sigma_2 \subseteq \sigma \land \sigma_1 \cap \sigma_2 = \emptyset \\
+\implies& \forall m_1 \in \sigma_1 : Sender(m_1) = v, \forall m_2 \in \sigma_2 : Sender(m_2) = v, m_1 \in Justification(m_2)
+\end{align}
+Note that $\sigma_2$ is not a protocol state, but just a collection of messages. The notation should probably be changed!
+\end{lemma}
+
+
+
+\begin{proof}
+  \begin{align}
+          &v \notin E(\sigma) \\
+  \implies&v \notin \{v' \in \mathcal{V} : \exists m_1 \in \sigma, \exists m_2 \in \sigma, ~ m_1 \perp m_2 ~ \land ~ Sender(m_1) = v' \} \\
+  \implies&\neg (\exists m_1 \in \sigma, \exists m_2 \in \sigma, ~ m_1 \perp m_2 ~ \land ~ Sender(m_1) = v) \\
+  \implies&\forall m_1 \in \sigma, \forall m_2 \in \sigma, ~ m_1 \not\perp m_2 ~ \lor ~ Sender(m_1) \neq v \\
+  \end{align}
+  Thus, if we are only considering messages from $v$, they must not be equivocations.
+
+  \begin{align}
+          &\forall m_1 \in \sigma: Sender(m_1) = v, \forall m_2 \in \sigma: Sender(m_2) = v, ~ m_1 \not\perp m_2 \\
+  \implies&\forall m_1 \in \sigma: Sender(m_1) = v, \forall m_2 \in \sigma: Sender(m_2) = v, ~ m_1 \not\perp m_2 \land \sigma_1 \subseteq \sigma \land \sigma_2 \subseteq \sigma \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, ~ m_1 \not\perp m_2 \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &\neg (Sender(m_1) = Sender(m_2) \land m_1 \neq m_2 \land m_1 \notin Justification(m_2) \land m_2 \notin Justification(m_1)) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &Sender(m_1) \neq Sender(m_2) \lor m_1 = m_2 \lor m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &Sender(m_1) \neq Sender(m_2) \lor m_1 = m_2 \lor m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land Sender(m_1) = v \land Sender(m_2) = v \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 = m_2 \lor m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 = m_2 \lor m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land m_1 \in \sigma_1 \land m_2 \notin \sigma_1 \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 = m_2 \lor m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land m_1 \neq m_2 \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land \forall \sigma^* \in \Sigma, \forall m^* \in \sigma^*, Justification(m^*) \subseteq \sigma^* \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land \forall m^* \in \sigma_1, Justification(m^*) \subseteq \sigma_1 \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land \forall m^* \in \sigma_1, (m' \in Justification(m^*) \implies m' \in \sigma_1) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land (m_2 \in Justification(m_1) \implies m_2 \in \sigma_1) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \\
+          &\land (m_2 \notin \sigma_1 \implies m_2 \notin Justification(m_1)) \land m_2 \notin \sigma_1 \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \lor m_2 \in Justification(m_1) \land m_2 \notin Justification(m_1) \\
+  \implies&\forall m_1 \in \sigma_1: Sender(m_1) = v, \forall m_2 \in \sigma_2: Sender(m_2) = v, m_1 \in Justification(m_2)\\
+  \end{align}
+\end{proof}
+
+\iffalse
+This is a specific version of the above proof. It's here because it existed first.
+\begin{lemma}[$\overline{m}$ is $\overline{v}$'s latest message in $\sigma$']
+$\forall (\sigma, \sigma') \in Minimal_t$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$,
+$$
+\overline{v} \notin E(\sigma') \implies \forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m})
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &\overline{v} \notin E(\sigma') \\
+\implies&\overline{v} \notin \{v \in \mathcal{V} : \exists m_1 \in \sigma', \exists m_2 \in \sigma', ~ m_1 \perp m_2 ~ \land ~ Sender(m_1) = v \} \\
+\implies&\neg (\exists m_1 \in \sigma', \exists m_2 \in \sigma', ~ m_1 \perp m_2 ~ \land ~ Sender(m_1) = \overline{v}) \\
+\implies&\forall m_1 \in \sigma', \forall m_2 \in \sigma', ~ m_1 \not\perp m_2 ~ \lor ~ Sender(m_1) \neq \overline{v} \\
+\end{align}
+Thus, if we are only considering messages from $\overline{v}$, they must not be equivocations.
+\begin{align}
+        &\forall m_1 \in \sigma': Sender(m_1) = \overline{v}, \forall m_2 \in \sigma': Sender(m_2) = \overline{v}, ~ m_1 \not\perp m_2 \\
+\implies&\forall m_1 \in \sigma': Sender(m_1) = \overline{v}, \forall m_2 \in \sigma \cup \{\overline{m}\}: Sender(m_2) = \overline{v}, ~ m_1 \not\perp m_2 \\
+\implies&\forall m_1 \in \sigma': Sender(m_1) = \overline{v}, \forall m_2 \in \{\overline{m}\}: Sender(m_2) = \overline{v}, ~ m_1 \not\perp m_2 \\
+\implies&\forall m_1 \in \sigma': Sender(m_1) = \overline{v}, \forall m_2 \in \{\overline{m}\}: Sender(m_2) = \overline{v}, ~ m_1 \not\perp m_2 \land Sender(\overline{m}) = \overline{v}\\
+\implies&\forall m \in \sigma': Sender(m) = \overline{v}, ~ m \not\perp \overline{m} \\
+\implies&\forall m \in \sigma \cup \{\overline{m}\}: Sender(m) = \overline{v}, ~ m \not\perp \overline{m} \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, ~ m \not\perp \overline{m} \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, \\
+        &\neg (Sender(m) = Sender(\overline{m}) \land m \neq \overline{m} \land m \notin Justification(\overline{m}) \land \overline{m} \notin Justification(m)) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, \\
+        &Sender(m) \neq Sender(\overline{m}) \lor m = \overline{m} \lor m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, \\
+        &Sender(m) \neq Sender(\overline{m}) \lor m = \overline{m} \lor m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land Sender(m) = \overline{v} \land Sender(\overline{m}) = \overline{v} \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, \\
+        &Sender(m) \neq Sender(\overline{m}) \lor m = \overline{m} \lor m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land Sender(m) = Sender(\overline{m}) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m = \overline{m} \lor m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m = \overline{m} \lor m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land m \in \sigma \land \overline{m} \notin \sigma \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m = \overline{m} \lor m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land m \neq \overline{m} \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land \forall \sigma^* \in \Sigma, \forall m^* \in \sigma^*, Justification(m^*) \subseteq \sigma^* \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land (\overline{m} \in Justification(m) \implies \overline{m} \in \sigma) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land (\overline{m} \notin \sigma \implies \overline{m} \notin Justification(m)) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land (\overline{m} \notin \sigma \implies \overline{m} \notin Justification(m)) \land \overline{m} \notin \sigma \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \lor \overline{m} \in Justification(m) \\
+        &\land \overline{m} \notin Justification(m) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m})\\
+\end{align}
+\end{proof}
+\fi
+
+
+\begin{lemma}[$\overline{m}$ is $\overline{v}$'s latest message in $\sigma$']
+$\forall (\sigma, \sigma') \in Minimal_t$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$,
+$$
+\overline{v} \notin E(\sigma') \implies \overline{m} = !L^H_M(\sigma')(\overline{v})))
+$$
+\end{lemma}
+
+\begin{proof}
+Note that $m \in Justification(m') \implies m' \notin Justification(m)$.
+\begin{align}
+        &\overline{v} \notin E(\sigma') \\
+\implies&\overline{v} \notin E(\sigma') \land \sigma \in \Sigma ~\land \sigma \subseteq \sigma' \land \{\overline{m}\} \subseteq \sigma' \land \sigma \cap \{\overline{m}\} = \emptyset \\
+\implies&\forall m_1 \in \sigma: Sender(m_1) = \overline{v}, \forall m_2 \in \{\overline{m}\}: Sender(m_2) = \overline{v}, m_1 \in Justification(m_2) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, \overline{m} \notin Justification(m) \\
+\implies&\forall m \in \sigma: Sender(m) = \overline{v}, \neg Later(m, \overline{m}) \\
+\implies&\forall m \in \sigma, \neg (Sender(m) = \overline{v} \land Later(m, \overline{m})) \\
+\implies&\{m \in \sigma: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \\
+\implies&\{m \in \sigma: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \land \forall m \in M, m \notin Justification(m) \\
+\implies&\{m \in \sigma: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \land \neg Later(\overline{m}, \overline{m}) \\
+\implies&\{m \in \sigma: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \land \{m \in \{\overline{m}\}: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \\
+\implies&\{m \in \sigma: Sender(m) = \overline{v} \land Later(m, \overline{m})\} \cup \{m \in \{\overline{m}\}: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \\
+\implies&\{m \in \sigma \cup \{\overline{m}\}: Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \\
+\implies&\{m \in \sigma': Sender(m) = \overline{v} \land Later(m, \overline{m})\} = \emptyset \\
+\implies&Later\_From(\overline{m}, \overline{v}, \sigma') = \emptyset \\
+\end{align}
+We will now be able to show that $\overline{m}$ is a latest honest message. Note that if a validator is not equivocating in $\sigma'$, the validators latest honest message is equal to the validators latest messages, by the defintion of latest honest message.
+\begin{align}
+        &\overline{v} \notin E(\sigma') \\
+\implies&L^H_M(\sigma')(\overline{v}) = L_M(\sigma')(\overline{v}) \\
+\implies&L^H_M(\sigma')(\overline{v}) = \{m \in \sigma' : Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma')(\overline{v}) = \{m \in \sigma \cup \{\overline{m}\} : Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma')(\overline{v}) = \{m \in \sigma: Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \\
+        &\cup \{m \in \{\overline{m}\}: Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \\
+\implies&L^H_M(\sigma')(\overline{v}) = \{m \in \sigma: Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \\
+        &\cup \{m \in \{\overline{m}\}: Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \\
+        &\land Sender(\overline{m}) = \overline{v} \land Later\_From(\overline{m},\overline{v},\sigma') = \emptyset \\
+\implies& L^H_M(\sigma')(\overline{v}) = \{m \in \sigma: Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \cup \{\overline{m}\} \\
+\implies& L^H_M(\sigma')(\overline{v}) = \{m \in \sigma: Sender(m) = \overline{v} ~\land~ Later\_From(m,\overline{v},\sigma') = \emptyset\} \cup \{\overline{m}\} \land |L^H_M(\sigma')(\overline{v})| = 1 \\
+\implies& L^H_M(\sigma')(\overline{v}) = \{\overline{m}\} \\
+\implies& \overline{m} = !L^H_M(\sigma')(\overline{v}) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Latest honest messages from non-equivocating messages are either the same as in their previous latest message, or later]
+$\forall (\sigma, \sigma') \in Minimal_t, \forall v \in \mathcal{V}$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$
+
+\begin{align}
+\overline{v} \notin E(\sigma') \land v \notin E(\sigma) \implies&~!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+&\lor Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v))
+\end{align}
+\end{lemma}
+
+\begin{proof}
+First, we will show that $v \notin E(Justification(\overline{m}))$.
+\begin{align}
+          &v \notin E(\sigma) \\
+  \implies&v \notin E(\sigma) \land Justification(\overline{m}) \subseteq \sigma \\
+  \implies&v \notin E(\sigma) \land E(Justification(\overline{m})) \subseteq E(\sigma) \\
+  \implies&v \notin E(Justification(\overline{m})) \\
+\end{align}
+
+Now, we will show that the justification $\overline{v}$'s previous latest message is a subset of the justification of this current message.
+\begin{align}
+          &\overline{v} \notin E(\sigma') \\
+  \implies& \overline{v} \notin E(\sigma') \land \sigma \in \Sigma ~\land \sigma \subseteq \sigma' \land \{\overline{m}\} \subseteq \sigma' \land \sigma \cap \{\overline{m}\} = \emptyset \\
+  \implies& \forall m_1 \in \sigma: Sender(m_1) = \overline{v}, \forall m_2 \in \{\overline{m}\}: Sender(m_2) = \overline{v}, m_1 \in Justification(m_2) \\
+  \implies& \forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+  \implies& \forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+          &\land \forall m_1 \in M, \forall m_2 \in Justification(m_1), Justification(m_2) \subseteq Justification(m_1) \\
+  \implies& \forall m \in \sigma: Sender(m) = \overline{v}, m \in Justification(\overline{m}) \land Justification(m) \subseteq Justification(\overline{m}) \\
+  \implies& \forall m \in \sigma: Sender(m) = \overline{v}, Justification(m) \subseteq Justification(\overline{m}) \\
+  \implies& \forall m \in \sigma: Sender(m) = \overline{v}, Justification(m) \subseteq Justification(\overline{m}) \\
+          &\land !L^H_M(\sigma)(\overline{v}) \in \sigma \land Sender(!L^H_M(\sigma)(\overline{v})) = \overline{v} \\
+  \implies& Justification(!L^H_M(\sigma)(\overline{v})) \subseteq Justification(\overline{m}) \\
+  \implies& !L^H_J(\sigma)(\overline{v}) \subseteq Justification(\overline{m}) \\
+\end{align}
+Note the important implication of above:
+$$
+Justification(\overline{m}) = !L^H_J(\sigma)(\overline{v}) \cup (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}))
+$$
+
+We now consider the set:
+$$
+New = \{ m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m) = v \}
+$$
+That is, the messages validator $\overline{v}$ has newly seen from validator $v$. There are two cases to consider: when $New = \emptyset$, or when $New \neq \emptyset$, where each one of which correponds to one piece of the disjunction of the lemma.
+
+\textbf{Case 1:} $New = \emptyset$.
+\begin{align}
+          &v \notin E(Justification(\overline{m})) \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = L_M(Justification(\overline{m}))(v) \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in Justification(\overline{m}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in Justification(\overline{m}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} ~\land \\
+          &Justification(\overline{m}) = !L^H_J(\sigma)(\overline{v}) \cup (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v})) \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) \cup (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v})) : Sender(m) = v \\
+          &\land~ Later\_From(m,v,Justification(\overline{m})) = \emptyset\} \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} ~\cup \\
+          &\{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\}\\
+\end{align}
+
+We now show one of these terms is equal to the empty set.
+\begin{align}
+          &New = \emptyset \\
+  \implies&\{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \} = \emptyset \\
+  \implies&\{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} \\
+          &= \emptyset \\
+\end{align}
+
+Thus, we can simplify:
+\begin{align}
+          &L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} ~\cup \\
+          &\{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\}\\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} ~\cup \\
+          &\{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\}\\
+          &\land \{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} \\
+          &= \emptyset \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} \cup \emptyset \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\} \\
+\end{align}
+
+We now show that, for any $m$:
+$Later\_From(m,v,Justification(\overline{m})) = Later\_From(m,v,!L^H_J(\sigma)(\overline{v}))$
+
+$\forall m \in M$,
+\begin{align}
+          &Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in Justification(\overline{m}) : Sender(m') = v \land Later(m', m)\} \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in Justification(\overline{m}) : Sender(m') = v \land Later(m', m)\} \\
+          &\land Justification(\overline{m}) = !L^H_J(\sigma)(\overline{v}) \cup (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v})) \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in !L^H_J(\sigma)(\overline{v}) \cup (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v})) : Sender(m') = v \land Later(m', m)\} \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in !L^H_J(\sigma)(\overline{v}) : Sender(m') = v \land Later(m', m)\} \cup \\
+          &\{m' \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m') = v \land Later(m', m)\} \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in !L^H_J(\sigma)(\overline{v}) : Sender(m') = v \land Later(m', m)\} \cup \\
+          &\{m' \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m') = v \land Later(m', m)\} \\
+          &\land \{ m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} = \emptyset \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in !L^H_J(\sigma)(\overline{v}) : Sender(m') = v \land Later(m', m)\} \cup \\
+          &\{m' \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m') = v \land Later(m', m)\} \\
+          &\land \{m' \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m') = v \land Later(m', m)\} = \emptyset \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in !L^H_J(\sigma)(\overline{v}) : Sender(m') = v \land Later(m', m)\} \cup \emptyset \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = \\
+          &\{m' \in !L^H_J(\sigma)(\overline{v}) : Sender(m') = v \land Later(m', m)\} \\
+  \implies&Later\_From(m,v,Justification(\overline{m})) = Later\_From(m,v,!L^H_J(\sigma)(\overline{v})) \\
+\end{align}
+
+This is enough for us to complete the proof
+\begin{align}
+          &L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\}\\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,Justification(\overline{m})) = \emptyset\}\\
+          &\land \forall m \in M, Later\_From(m,v,Justification(\overline{m})) = Later\_From(m,v,!L^H_J(\sigma)(\overline{v})) \\
+  \implies&L^H_M(Justification(\overline{m}))(v) = \\
+          &\{m \in !L^H_J(\sigma)(\overline{v}) : Sender(m) = v \land Later\_From(m,v,!L^H_J(\sigma)(\overline{v})) = \emptyset\}\\
+  \implies&L^H_M(Justification(\overline{m}))(v) = L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) = !L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+\end{align}
+
+\textbf{Case 2:} $New \neq \emptyset$
+\begin{align}
+          &v \notin E(Justification(\overline{m})) \\
+  \implies&v \notin E(Justification(\overline{m})) ~\land~ !L^H_J(\sigma)(\overline{v}) \in \Sigma ~\land~ !L^H_J(\sigma)(\overline{v}) \subseteq Justification(\overline{m}) \\
+          &\land (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v})) \subseteq Justification(\overline{m}) \\
+          &\land !L^H_J(\sigma)(\overline{v}) \cap (Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v})) = \emptyset \\
+  \implies&\forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \forall m_2 \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m_2) = v, \\
+          &m_1 \in Justification(m_2) \\
+  \implies&\forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \forall m_2 \in \{m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}) : Sender(m_2) = v\}, \\
+          &m_1 \in Justification(m_2) \\
+  \implies&\forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \forall m_2 \in New, m_1 \in Justification(m_2) \\
+  \implies&\forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \forall m_2 \in New, m_1 \in Justification(m_2) \\
+          &\land !L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \in !L^H_J(\sigma)(\overline{v}) \\
+  \implies&\forall m_2 \in New, !L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \in Justification(m_2) \\
+  \implies&\forall m \in New, Later(m, !L^H_M(!L^H_J(\sigma)(\overline{v}))(v)) \\
+\end{align}
+
+It just remains to show that $!L^H_M(Justification(\overline{m}))(v) \in New$. We know it exists as ! is defined. Assume towards a contradiction that $!L^H_M(Justification(\overline{m}))(v) \notin New$.
+\begin{align}
+          &!L^H_M(Justification(\overline{m}))(v) \notin New \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) \notin \{ m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) \notin \{ m \in Justification(\overline{m}) \setminus !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} \\
+          &\land !L^H_M(Justification(\overline{m}))(v) \in Justification(\overline{m}) \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) \in \{ m \in !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) \in \{ m \in !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} \\
+          &\land \forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \forall m_2 \in New, m_1 \in Justification(m_2) \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) \in \{ m \in !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} \\
+          &\land \forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \forall m_2 \in New, m_1 \in Justification(m_2) \\
+          &\land New \neq \emptyset \\
+  \implies&!L^H_M(Justification(\overline{m}))(v) \in \{ m \in !L^H_J(\sigma)(\overline{v}): Sender(m) = v \} \\
+          &\land \forall m_1 \in !L^H_J(\sigma)(\overline{v}) : Sender(m_1) = v, \exists m_2 \in New, m_1 \in Justification(m_2) \\
+  \implies&\exists m \in New, !L^H_M(Justification(\overline{m}))(v) \in Justification(m) \\
+  \implies&\exists m \in New, Later(m, !L^H_M(Justification(\overline{m}))(v)) \\
+  \implies&\exists m \in New, Later(m, !L^H_M(Justification(\overline{m}))(v)) \land Sender(m) = v \\
+  \implies&\{m \in New : Sender(m) = v \land Later(m, !L^H_M(Justification(\overline{m}))(v))\} \neq \emptyset \\
+  \implies&\{m \in New : Sender(m) = v \land Later(m, !L^H_M(Justification(\overline{m}))(v))\} \neq \emptyset \\
+          &\land New \subseteq Justification(\overline{m}) \\
+  \implies&\{m \in Justification(\overline{m}) : Sender(m) = v \land Later(m, !L^H_M(Justification(\overline{m}))(v))\} \neq \emptyset \\
+  \implies&Later\_From(!L^H_M(Justification(\overline{m}))(v), v, Justification(\overline{m})) \neq \emptyset
+\end{align}
+This is clearly a contradiction, as the latest message must have no later messages. Thus, we know that $!L^H_M(Justification(\overline{m}))(v) \in New$, and now we can complete the second case.
+
+\begin{align}
+          &\forall m \in New, Later(m, !L^H_M(!L^H_J(\sigma)(\overline{v}))(v)) \\
+          &\land ~!L^H_M(Justification(\overline{m}))(v) \in New \\
+  \implies& Later(!L^H_M(Justification(\overline{m}))(v), !L^H_M(!L^H_J(\sigma)(\overline{v}))(v))\\
+\end{align}
+
+Thus, we have completed the two cases:
+
+\begin{align}
+        &\overline{v} \notin E(\sigma') \land v \notin E(\sigma) \\
+\implies& New = \emptyset \lor New \neq \emptyset \\
+\implies& !L^H_M(Justification(\overline{m}))(v) = !L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\lor Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v))
+\end{align}
+
+\end{proof}
+
+
+\begin{lemma}
+$\forall \sigma^* \in \Sigma, \forall m_1 \in \sigma^*, \forall m_2 \in \sigma^*$,
+$$
+Later(m_1, m_2) \implies m_1 \in Later\_From(m_2, Sender(m_1), \sigma^*)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &Later(m_1, m_2) \\
+  \implies& Sender(m_1) = Sender(m_1) \land Later(m_1, m_2) \\
+  \implies& m_1 \in \sigma^* \land Sender(m_1) = Sender(m_1) \land Later(m_1, m_2) \\
+  \implies& m_1 \in \{m' \in \sigma^* : Sender(m') = Sender(m_1) \land Later(m', m_2)\} \\
+  \implies& m_1 \in Later\_From(m_2, Sender(m_1), \sigma^*) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}
+$\forall \sigma \in \Sigma, \forall v \in \mathcal{V}$ such that ! is defined,
+$$
+p(Estimate(!L^H_M(\sigma)(v))) \implies v \in Agreeing(p, \sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &p(Estimate(!L^H_M(\sigma)(v))) \\
+\implies& v \in \{ v \in \mathcal{V} : p(Estimate(!L^H_M(\sigma)(v))) \} \\
+\implies& v \in \{ v \in \mathcal{V} : \forall m \in L^H_M(\sigma)(v), p(Estimate(m)) \} \\
+\implies& v \in \{ v \in \mathcal{V} : \forall c \in L^H_E(\sigma)(v), p(c) \} \\
+\implies& v \in Agreeing(p, \sigma) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Non-equivocating messages from clique members see clique agree]
+$\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p), \forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$
+$$
+Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \implies V \subseteq Agreeing(p, Justification(\overline{m}))
+$$
+\end{lemma}
+
+%Clique\_Oracle_t(V, p, \sigma) &:\Leftrightarrow Clique(V, p, \sigma) \land Weight(V) >  (t + Weight(V))/2 - Weight(E(\sigma))
+
+\begin{proof}
+Our lemma gave us two cases, one where $\overline{v}$ updated $v$'s latest message in $Justification(\overline{m})$ from $!L^H_J(\sigma)(\overline{v})$, and one where it remained unchanged.
+
+$\forall v \in V,$
+\begin{align}
+\overline{v} \in V \land \overline{v} \notin E(\sigma') &\implies~!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+&~~\lor Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))
+\end{align}
+
+We will use the ``mutually-observed agreement" part of the Clique definition to show that the unchanged messages agree, and the ``no later disagreeing'' part to show that updated messages also agree.
+
+For the first case where the latest messages from validator $v$ are the same:
+\begin{align}
+        &Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \\
+        &\land !L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+\implies&!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\land \forall v' \in V, V \subseteq Agreeing(p, !L^H_J(\sigma)(v')) \\
+\implies&!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\land \forall v' \in V, v \in Agreeing(p, !L^H_J(\sigma)(v')) \\
+\implies&!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\land v \in Agreeing(p, !L^H_J(\sigma)(\overline{v})) \\
+\implies&!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\land v \in \{v' \in \mathcal{V} : \forall c \in L^H_E(!L^H_J(\sigma)(\overline{v}))(v'), p(c)\}  \\
+\implies&!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\land \forall c \in L^H_E(!L^H_J(\sigma)(\overline{v}))(v), p(c)  \\
+\implies&!L^H_E(Justification(\overline{m}))(v) =~!L^H_E(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\land \forall c \in L^H_E(!L^H_J(\sigma)(\overline{v}))(v), p(c)  \\
+\implies&\forall c \in L^H_E(Justification(\overline{m}))(v), p(c)  \\
+\implies&v \in \{v' \in \mathcal{V} : \forall c \in L^H_E(Justification(\overline{m}))(v'), p(c)\}  \\
+\implies&v \in Agreeing(p, Justification(\overline{m}))
+\end{align}
+
+And in the case when there is a new later message from $v$:
+\begin{align}
+        &Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \\
+        &\land Later(~!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v)) \\
+\implies& Later(~!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v)) \\
+        &\land \forall v' \in V, \forall v'' \in V,Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(v'))(v''), v'', \sigma) = \emptyset \\
+\implies&Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))) \\
+        &\land Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma) = \emptyset \\
+\implies& Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))) \\
+        &\land \{m' \in Later\_From(!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma) : \neg p(Estimate(m')) \}  = \emptyset \\
+\implies& Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))) \\
+        &\land \nexists m' \in Later\_From(!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma), \neg p(Estimate(m')) \\
+\implies& Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))) \\
+        &\land \forall m' \in Later\_From(!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma), p(Estimate(m')) \\
+\implies& Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))) \\
+        &\land \forall m' \in Later\_From(!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma), p(Estimate(m')) \\
+        &\land \forall \sigma^* \in \Sigma, \forall m_1 \in \sigma^*, \forall m_2 \in \sigma^*, Later(m_1, m_2) \implies m_1 \in Later\_From(m_2, Sender(m_1), \sigma^*) \\
+\implies&!L^H_M(Justification(\overline{m}))(v) \in Later\_From(!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma) \\
+        &\land \forall m' \in Later\_From(!L^H_M(!L^H_J(\sigma)(\overline{v}))(v), v, \sigma), p(Estimate(m')) \\
+\implies&p(Estimate(!L^H_M(Justification(\overline{m}))(v))) \\
+\implies&p(Estimate(!L^H_M(Justification(\overline{m}))(v))) \land \\
+        &(\forall \sigma^* \in \Sigma, \forall v' \in \mathcal{V}, p(Estimate(!L^H_M(\sigma^*)(v'))) \implies v' \in Agreeing(p, \sigma^*)) \\
+\implies&v \in Agreeing(p, Justification(\overline{m}))
+\end{align}
+
+
+Since in both of our cases we have $v \in Agreeing(p, Justification(m))$, we the following result
+
+\begin{align}
+        &Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \\
+\implies&!L^H_M(Justification(\overline{m}))(v) =~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v) \\
+        &\lor Later(!L^H_M(Justification(\overline{m}))(v),~!L^H_M(!L^H_J(\sigma)(\overline{v})(v))\\
+\implies&\forall v \in V, v \in Agreeing(p, Justification(\overline{m})) \\
+        &\lor \forall v \in V, v \in Agreeing(p, Justification(\overline{m})) \\
+\implies&\forall v \in V, v \in Agreeing(p, Justification(\overline{m}))
+\end{align}
+
+Which gives us our result:
+
+$$
+Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \implies V \subseteq Agreeing(p, Justification(\overline{m}))
+$$
+
+\end{proof}
+
+
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+
+\subsubsection{Non-equivocating messages from majority clique members agree}
+
+
+\begin{lemma}[New messages from majority clique members agree]
+$\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p), \forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} =~!\sigma'\setminus\sigma$ and $\overline{v} = Sender(\overline{m})$.
+\begin{align}
+Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma')& \\
+\land \forall v \in V, Majority^H(V, !L^H_J(\sigma)(v)) & \implies \overline{v} \in Agreeing(p, \sigma')
+\end{align}
+
+\end{lemma}
+
+\begin{proof}
+
+We note that $\overline{m}$'s justification includes at least the equivocating weight as $\overline{v}$'s previous latest message.
+\begin{align}
+        &\overline{v} \notin E(\sigma') \\
+\implies&Justification(\overline{m}) \supseteq !L^H_J(\sigma)(\overline{v}) \\
+\implies&E(Justification(\overline{m})) \supseteq E(!L^H_J(\sigma)(\overline{v})) \\
+\implies&Weight(E(Justification(\overline{m}))) \geq Weight(E(!L^H_J(\sigma)(\overline{v})))
+\end{align}
+
+An we use this to show that $V$ has a majority of the non-equivocating weight, in $\overline{m}$'s justification.
+
+\begin{align}
+          &\overline{v} \in V \land \forall v \in V, Majority^H(V, !L^H_J(\sigma)(v)) \\
+\implies&Majority^H(V, !L^H_J(\sigma)(\overline{v})) \\
+\implies&Weight(V) > Weight(\mathcal{V} \setminus E(!L^H_J(\sigma)(\overline{v})))/2 \\
+\implies&Weight(V) > Weight(\mathcal{V})/2 - Weight(E(!L^H_J(\sigma)(\overline{v})))/2 \\
+\implies&Weight(V) > Weight(\mathcal{V})/2 - Weight(E(!L^H_J(\sigma)(\overline{v})))/2 \\
+        &\land Weight(E(Justification(\overline{m}))) \geq Weight(E(!L^H_J(\sigma)(\overline{v}))) \\
+\implies&Weight(V) > Weight(\mathcal{V})/2 - Weight(E(Justification(\overline{m})))/2 \\
+\implies&Weight(V) > Weight(\mathcal{V} \setminus E(Justification(\overline{m})))/2 \\
+\implies&Weight(V) > Weight(\mathcal{V} \setminus E(Justification(\overline{m})))/2 \\
+\implies&Majority^H(V, Justification(\overline{m}))
+\end{align}
+
+We will now use our previous lemma, this result, and the definition of majority-driven properties to complete the proof:
+
+\begin{align}
+        &Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \\
+\implies&V \subseteq Agreeing(p, Justification(\overline{m}))\\
+\implies&Weight(V) \leq Weight(Agreeing(p, Justification(\overline{m})))\\
+\implies&Weight(V) \leq Weight(Agreeing(p, Justification(\overline{m})))\\
+        &\land Majority^H(V, Justification(\overline{m})) \\
+\implies&Weight(V) \leq Weight(Agreeing(p, Justification(\overline{m})))\\
+        &\land Weight(V) > Weight(\mathcal{V} \setminus E(Justification(\overline{m})))/2 \\
+\implies&Weight(Agreeing(p, Justification(\overline{m}))) > Weight(\mathcal{V} \setminus E(Justification(\overline{m})))/2 \\
+\implies&Majority^H(Agreeing(p, Justification(\overline{m})), Justification(\overline{m})) \\
+\implies&Majority^H(Agreeing(p, Justification(\overline{m})), Justification(\overline{m})) \\
+        &\land [\forall \sigma^* \in \Sigma, Majority^H(Agreeing(p, \sigma^*), \sigma^*) \implies \forall c \in \mathcal{E}(\sigma^*), p(c)] \\
+\implies&\forall c \in \mathcal{E}(Justification(\overline{m})), p(c) \\
+\implies&\forall c \in \mathcal{E}(Justification(\overline{m})), p(c) \land Estimate(\overline{m}) \in \mathcal{E}(Justification(\overline{m})) \\
+\implies&p(Estimate(\overline{m})) \\
+\implies&p(Estimate(!L^H_M(\sigma')(\overline{v}))) \\
+\implies&p(Estimate(!L^H_M(\sigma')(\overline{v}))) \land \\
+        &(\forall \sigma^* \in \Sigma, \forall v' \in \mathcal{V}, p(Estimate(!L^H_M(\sigma^*)(v'))) \implies v' \in Agreeing(p, \sigma^*)) \\
+\implies&\overline{v} \in Agreeing(p, \sigma') \\
+\end{align}
+\end{proof}
+
+
+
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+
+\subsubsection{Honest messages from majority clique members do not break the clique}
+
+
+\begin{lemma}
+$$
+\overline{v} \notin E(\sigma') \implies !L^H_M(Justification(\overline{m}))(\overline{v}) = !L^H_M(\sigma)(\overline{v})
+$$
+\end{lemma}
+
+\begin{proof}
+First, we show that $\overline{v}$ is not equivocating in $Justification(\overline{m})$.
+\begin{align}
+          &\overline{v} \notin E(\sigma') \\
+  \implies&\overline{v} \notin E(\sigma') \land Justification(\overline{m}) \subseteq \sigma \land \sigma \subset \sigma' \\
+  \implies&\overline{v} \notin E(\sigma') \land Justification(\overline{m}) \subset \sigma' \\
+  \implies&\overline{v} \notin E(\sigma') \land E(Justification(\overline{m})) \subseteq E(\sigma') \\
+  \implies&\overline{v} \notin E(Justification(\overline{m})) \\
+\end{align}
+
+Now, assume towards a contradiction:
+$$
+\exists m \in Justification(\overline{m}): Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))
+$$
+\begin{align}
+  &\exists m \in Justification(\overline{m}): Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v})) \\
+  \implies& \exists m \in Justification(\overline{m}): Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v})) \land Justification(\overline{m}) \subseteq \sigma \\
+  \implies& \exists m \in \sigma: Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v})) \\
+  \implies& \{m \in \sigma : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \neq \emptyset \\
+  \implies& Later\_From(!L^H_M(\sigma)(\overline{v})), \overline{v}, \sigma) \neq \emptyset \\
+\end{align}
+Thus, this is clearly a contradiction, as the latest message in a state cannot have any later messages. Thus, we know that:
+$$
+\neg (\exists m \in Justification(\overline{m}): Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v})))
+$$
+which is enough to complete the proof.
+\begin{align}
+          &\neg (\exists m \in Justification(\overline{m}): Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))) \\
+  \implies&\nexists m \in Justification(\overline{m}): Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v})) \\
+  \implies&\{m \in Justification(\overline{m}) : Sender(m) = \overline{v} \land  Later(m, !L^H_M(\sigma)(\overline{v}))\} = \emptyset \\
+  \implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, Justification(\overline{m})) = \emptyset \\
+  \implies&Sender(!L^H_M(\sigma)(\overline{v})) = \overline{v} \land Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, Justification(\overline{m})) = \emptyset \\
+  \implies&!L^H_M(\sigma)(\overline{v}) \in \{m \in Justification(\overline{m}) : Sender(m) = \overline{v} \land Later\_From(m, \overline{v}, Justification(\overline{m})) = \emptyset\} \\
+  \implies&!L^H_M(\sigma)(\overline{v}) \in L_M(Justification(\overline{m}))(\overline{v}) \\
+  \implies&!L^H_M(\sigma)(\overline{v}) \in L_M(Justification(\overline{m}))(\overline{v}) \land \overline{v} \notin E(Justification(\overline{m})) \\
+  \implies&!L^H_M(\sigma)(\overline{v}) \in L_M(Justification(\overline{m}))(\overline{v}) \land L^H_M(Justification(\overline{m}))(\overline{v}) = L_M(Justification(\overline{m}))(\overline{v}) \\
+  \implies&!L^H_M(\sigma)(\overline{v}) \in L^H_M(Justification(\overline{m}))(\overline{v})\\
+  \implies&!L^H_M(\sigma)(\overline{v}) \in L^H_M(Justification(\overline{m}))(\overline{v}) \land |L^H_M(Justification(\overline{m}))(\overline{v})| = 1\\
+  \implies&!L^H_M(Justification(\overline{m}))(\overline{v}) = !L^H_M(\sigma)(\overline{v})\\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}
+$$
+\overline{v} \notin E(\sigma') \implies Later(\overline{m}, !L^H_M(\sigma)(\overline{v}))
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \notin E(\sigma') \\
+  \implies&\overline{v} \notin E(\sigma') \land \sigma \subseteq \sigma' \land \sigma \in \Sigma \land \{\overline{m}\} \subseteq \sigma' \land \sigma \cap \{\overline{m}\} = \emptyset \\
+  \implies&\forall m_1 \in \sigma : Sender(m_1) = \overline{v}, \forall m_2 \in \{\overline{m}\} : Sender(m_2) = \overline{v}, m_1 \in Justification(m_2) \\
+  \implies&\forall m \in \sigma : Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+  \implies&\forall m \in \sigma : Sender(m) = \overline{v}, m \in Justification(\overline{m}) \\
+          &\land !L^H_M(\sigma)(\overline{v}) \in \sigma \land Sender(!L^H_M(\sigma)(\overline{v})) = \overline{v}\\
+  \implies& !L^H_M(\sigma)(\overline{v}) \in Justification(\overline{m}) \\
+  \implies& Later(\overline{m}, !L^H_M(\sigma)(\overline{v})) \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Nothing later than latest honest message]
+$\forall v \in \mathcal{V}, \forall \sigma \in \Sigma, \forall m \in M$
+$$
+  v \notin E(\sigma) \implies Later\_From(!L^H_M(\sigma)(v), v, \sigma) = \emptyset
+$$
+We note that this lemma is used in some important contradictions above, and should be moved up at some point :)
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &v \notin E(\sigma) \\
+  \implies&L^H_M(\sigma)(v) = L_M(\sigma)(v) \\
+  \implies&L^H_M(\sigma)(v) = \{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\} \\
+  \implies&!L^H_M(\sigma)(v) = !\{m \in \sigma : Sender(m) = v ~\land~ Later\_From(m,v,\sigma) = \emptyset\} \\
+  \implies&Later\_From(!L^H_M(\sigma)(v),v,\sigma) = \emptyset
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Later messages for sender is just the new message]
+$$
+\overline{v} \notin E(\sigma') \implies Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{\overline{m}\}
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &\overline{v} \notin E(\sigma') \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma' : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma \cup \{\overline{m}\} : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+        &\cup \{\overline{m} : Sender(\overline{m}) = \overline{v} \land Later(\overline{m}, !L^H_M(\sigma)(\overline{v}))\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{m \in \sigma : Sender(m) = \overline{v} \land Later(m, !L^H_M(\sigma)(\overline{v}))\} \\
+        &\cup \{\overline{m}\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma) \cup \{\overline{m}\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \emptyset \cup \{\overline{m}\} \\
+\implies&Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') = \{\overline{m}\} \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Later disagreeing is monotonic]
+$\forall v \in V, \forall \sigma \in \Sigma, \forall m_1 \in M$,
+$$
+  m_1 \in Justification(m_2) \implies Later\_Disagreeing(p,m_2,v,\sigma) \subseteq Later\_Disagreeing(p,m_1,v,\sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &m_1 \in Justification(m_2) \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in Later\_From(m_2, v, \sigma) : \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \{m'' \in \sigma : Sender(m'') = v \land Later(m'', m_2)\} : \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land Later(m', m_2) \land \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+        &\land \forall m \in M, m_1 \in Justification(m_2) \implies (Later(m, m_2) \implies Later(m, m_1)) \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+        &\land \forall m \in M, Later(m, m_2) \implies Later(m, m_1) \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) = \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_2)\} \\
+        &\land \{m' \in \sigma : Later(m', m_2)\} \subseteq \{m' \in \sigma : Later(m', m_1)\} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) \subseteq \{m' \in \sigma : Sender(m') = v \land \neg p(Estimate(m')) \} \cap \{m' \in \sigma : Later(m', m_1)\} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) \subseteq \{m' \in \sigma : Sender(m') = v \land Later(m', m_1) \land \neg p(Estimate(m')) \} \\
+\implies&Later\_Disagreeing(p,m_2,v,\sigma) \subseteq Later\_Disagreeing(p,m_1,v,\sigma) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}
+\begin{align}
+          &\overline{v} \notin E(\sigma') \land v' \notin E(\sigma) \\
+          &Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+  \implies&Later\_Disagreeing(p,~!L^H_M(Justification(\overline{m}))(v'), v', \sigma') = \emptyset \\
+\end{align}
+\end{lemma}
+
+
+
+\begin{proof}
+Recall the previous result:
+\begin{align}
+          &\overline{v} \notin E(\sigma') \land v' \notin E(\sigma) \\
+  \implies&!L^H_M(Justification(\overline{m}))(v') = !L^H_M(!L^H_J(\sigma)(\overline{v}))(v') \\
+          &\lor Later(!L^H_M(Justification(\overline{m}))(v'),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v')) \\
+\end{align}
+
+We will handle each case:
+
+\begin{align}
+          &Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &\land !L^H_M(Justification(\overline{m}))(v') = !L^H_M(!L^H_J(\sigma)(\overline{v}))(v') \\
+  \implies&Later\_Disagreeing(p, !L^H_M(Justification(\overline{m}))(v'), v', \sigma) = \emptyset \\
+\end{align}
+
+In the second case:
+\begin{align}
+          &Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &\land Later(!L^H_M(Justification(\overline{m}))(v'),~!L^H_M(!L^H_J(\sigma)(\overline{v}))(v')) \\
+  \implies&Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &\land !L^H_M(!L^H_J(\sigma)(\overline{v}))(v') \in Justification(!L^H_M(Justification(\overline{m}))(v')) \\
+  \implies&Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(\overline{v}))(v'), v', \sigma) = \emptyset \\
+          &Later\_Disagreeing(p,!L^H_M(Justification(\overline{m}))(v'),v',\sigma) \subseteq Later\_Disagreeing(p,!L^H_M(!L^H_J(\sigma)(\overline{v}))(v'),v',\sigma) \\
+  \implies&Later\_Disagreeing(p,!L^H_M(Justification(\overline{m}))(v'),v',\sigma) \subseteq \emptyset \\
+  \implies&Later\_Disagreeing(p,!L^H_M(Justification(\overline{m}))(v'),v',\sigma) = \emptyset \\
+\end{align}
+
+Thus concluding the proof.
+\end{proof}
+
+
+\begin{lemma}[New non-equivocating latest messages from members of majority clique don't break the clique]
+$\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p), \forall \sigma \in \Sigma_t, \forall (\sigma, \sigma') \in Minimal_t,\forall V \subseteq \mathcal{V}$, letting $\overline{m} =~!\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+
+\begin{align}
+Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') &\\
+\land ~\forall v \in V, Majority^H(V, !L^H_J(\sigma)(v)) & \implies Clique(1, V, p, \sigma')
+\end{align}
+\end{lemma}
+
+\begin{proof}
+
+From our previous result,
+
+$$
+Clique(1, V, p, \sigma) \implies Clique(1, V \setminus \{\overline{v}\}, p, \sigma')
+$$
+
+
+Thus, we know that
+\begin{align}
+        &Clique(1, V, p, \sigma) \\
+\implies&Clique(1, V \setminus \{\overline{v}\}, p, \sigma') \\
+\implies&\forall v \in V \setminus \{\overline{v}\}, V \setminus \{\overline{v}\} \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+        &~~~~~\land \forall v' \in V \setminus \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+\end{align}
+
+To complete the proof, we must show that $\overline{v}$ is a member of the clique. Thus, it only remains to show the following:
+
+\textbf{1:} $\forall v \in \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v))$
+
+\begin{align}
+          &Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \\
+  \implies&V \subseteq Agreeing(p, Justification(\overline{m})) \land \overline{m} = !L^H_M(\sigma')(\overline{v})))\\
+  \implies&V \subseteq Agreeing(p, Justification(!L^H_M(\sigma')(\overline{v}))))) \\
+  \iff& \forall v \in \{\overline{v}\}, V \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+\end{align}
+
+\textbf{2:} $\forall v \in V \setminus \{\overline{v}\}, \{\overline{v}\} \subseteq Agreeing(p, !L^H_J(\sigma')(v))$
+
+\begin{align}
+          &Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') \\
+  \implies&\forall v \in V, V \subseteq Agreeing(p, !L^H_J(\sigma)(v)) \\
+          &\land V \setminus \{\overline{v}\} \subseteq V \land \{\overline{v}\} \subseteq V \\
+  \implies&\forall v \in V \setminus \{\overline{v}\}, \{\overline{v}\} \subseteq Agreeing(p, !L^H_J(\sigma)(v)) \\
+          &\land \forall v \in V \setminus \{\overline{v}\}, !L^H_J(\sigma)(v) = !L^H_J(\sigma')(v) \\
+  \implies&\forall v \in V \setminus \{\overline{v}\}, \{\overline{v}\} \subseteq Agreeing(p, !L^H_J(\sigma')(v)) \\
+\end{align}
+
+\textbf{3:} $\forall v \in \{\overline{v}\}, \forall v' \in \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset$
+
+
+To prove this condition, first observe:
+\begin{align}
+&\forall v \in \{\overline{v}\}, \forall v' \in \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+&\iff Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(\overline{v}))(\overline{v}), \overline{v}, \sigma') = \emptyset \\
+\end{align}
+
+And then:
+\begin{align}
+ &Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(\overline{v}))(\overline{v}), \overline{v}, \sigma') \\
+=&Later\_Disagreeing(p,~!L^H_M(Justification(\overline{m}))(\overline{v}), \overline{v}, \sigma') \\
+=& Later\_Disagreeing(p,~!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') \\
+=& \{ m \in Later\_From(!L^H_M(\sigma)(\overline{v}), \overline{v}, \sigma') : \neg p(Estimate(m)) \}\\
+=& \{ m \in \{\overline{m}\} : \neg p(Estimate(m)) \}\\
+=& \{ m \in \{\overline{m}\} : \neg p(Estimate(m)) \land p(Estimate(\overline{m})) \} \\
+=& \emptyset
+\end{align}
+
+\textbf{4:} $\forall v \in \{\overline{v}\}, \forall v' \in V \setminus \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset$
+
+Again, first observe
+\begin{align}
+&\forall v \in \{\overline{v}\}, \forall v' \in V \setminus \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+&\iff \forall v' \in V \setminus \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma') = \emptyset \\
+\end{align}
+
+$\forall v' \in V \setminus \{\overline{v}\}$
+\begin{align}
+  &Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma') \\
+  &= \{m \in Later\_From(!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma') : \neg p(Estimate(m)) \} \\
+  &= \{m \in \{m' \in \sigma' : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\} : \neg p(Estimate(m)) \} \\
+  &= \{m \in \{m' \in \sigma \cup \{\overline{m}\} : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\} : \neg p(Estimate(m)) \} \\
+  &= \{m \in \big(\{m' \in \sigma : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\}~ \cup \\
+  &~~~~\{m' \in \{\overline{m}\} : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\}\big) : \neg p(Estimate(m)) \} \\
+  &= \{m \in \big(\{m' \in \sigma : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\}~ \cup \\
+  &~~~~\{\overline{m} : Sender(\overline{m}) = v' \land Sender(\overline{m}) \neq v' \land Later(\overline{m}, !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\}\big) : \neg p(Estimate(m)) \} \\
+  &= \{m \in (\{m' \in \sigma : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\} \cup \emptyset) : \neg p(Estimate(m)) \} \\
+  &= \{m \in \{m' \in \sigma : Sender(m') = v' \land Later(m', !L^H_M(!L^H_J(\sigma')(\overline{v}))(v'))\} : \neg p(Estimate(m)) \} \\
+  &= \{m \in Later\_From(!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma) : \neg p(Estimate(m)) \} \\
+  &= Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(\overline{v}))(v'), v', \sigma) \\
+  &= Later\_Disagreeing(p,~!L^H_M(Justification(\overline{m}))(v'), v', \sigma) \\
+  &= \emptyset \\ % by above lemmas
+\end{align}
+
+\textbf{5:} $\forall v \in V \setminus \{\overline{v}\}, \forall v' \in \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset$
+
+
+\begin{align}
+&\forall v \in V \setminus \{\overline{v}\}, \forall v' \in \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(v'), v', \sigma') = \emptyset \\
+&\iff \forall v \in V \setminus \{\overline{v}\}, Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(\overline{v}), \overline{v}, \sigma') = \emptyset \\
+\end{align}
+
+$\forall v \in V \setminus \{\overline{v}\},$
+\begin{align}
+&Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma')(v))(\overline{v}), \overline{v}, \sigma') \\
+&= Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(v))(\overline{v}), \overline{v}, \sigma')\\
+&= \{m \in Later\_From(!L^H_M(!L^H_J(\sigma)(v))(\overline{v}), \overline{v}, \sigma') : \neg p(Estimate(m)) \} \\
+&= \{m \in \{m' \in \sigma' : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \{m \in \{m' \in \sigma \cup \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \{m \in \big(\{m' \in \sigma : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\}~ \cup \\
+&~~~~\{m' \in \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\}\big) : \neg p(Estimate(m)) \} \\
+&= \{m \in \{m' \in \sigma : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} ~ \cup \\
+&~~~~\{m \in \{m' \in \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \{m \in Later\_From(!L^H_M(!L^H_J(\sigma)(v))(\overline{v}), \overline{v}, \sigma) : \neg p(Estimate(m)) \} ~ \cup \\
+&~~~~\{m \in \{m' \in \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= Later\_Disagreeing(p,~!L^H_M(!L^H_J(\sigma)(v))(\overline{v}), \overline{v}, \sigma) ~ \cup\\
+&~~~~\{m \in \{m' \in \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \emptyset \cup \{m \in \{m' \in \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \{m \in \{m' \in \{\overline{m}\} : Sender(m') = \overline{v} \land Later(m', !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \{m \in \{\overline{m} : Sender(\overline{m}) = \overline{v} \land Later(\overline{m}, !L^H_M(!L^H_J(\sigma)(v))(\overline{v}))\} : \neg p(Estimate(m)) \} \\
+&= \{\overline{m} : Sender(\overline{m}) = \overline{v} \land Later(\overline{m}, !L^H_M(!L^H_J(\sigma)(v))(\overline{v})) \land \neg p(Estimate(\overline{m})) \} \\
+&= \{\overline{m} : Sender(\overline{m}) = \overline{v} \land Later(\overline{m}, !L^H_M(!L^H_J(\sigma)(v))(\overline{v})) \land \neg p(Estimate(\overline{m})) \land p(Estimate(\overline{m}))\} \\
+&= \emptyset \\
+\end{align}
+
+These results together with $Clique(1, V \setminus {\overline{v}}, p, \sigma')$ give our desired result:
+
+\begin{align}
+Clique(1, V, p, \sigma) \land \overline{v} \in V \land \overline{v} \notin E(\sigma') &\\
+\land ~\forall v \in V, Majority^H(V, !L_J(\sigma)(v)) &\implies Clique(1, V, p, \sigma')
+\end{align}
+
+\end{proof}
+
+
+
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+%---------------------------------------------------------------------------------------------------------------------
+
+
+
+\subsection{Equivocations from Validators in Clique do not break cliques}
+
+\begin{defn}[One layer clique oracle threshold size]
+\begin{align}
+Threshold_t&: \mathcal{P}(\mathcal{V}) \times \Sigma_t \to \{True, False\} \\
+Threshold_t(V, \sigma) &:\Leftrightarrow Weight(V) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma))
+\end{align}
+\end{defn}
+
+\begin{lemma}
+  $$
+    Threshold_t(V, \sigma) \implies \forall v \in V, Majority^H(V, !L^H_J(\sigma)(v))
+  $$
+\end{lemma}
+
+\begin{proof}
+  \begin{align}
+            & Threshold_t(V, \sigma) \\
+    \implies& Weight(V) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+    \implies& Weight(V) > Weight(\mathcal{V})/2 \\
+    \implies& \forall v \in V, Weight(V) > Weight(\mathcal{V})/2 \\
+    \implies& \forall v \in V, Weight(V) > Weight(\mathcal{V} \setminus E(!L^H_J(\sigma)(v)))/2 \\
+    \implies& \forall v \in V, Majority^H(V, !L^H_J(\sigma)(v))) \\
+  \end{align}
+\end{proof}
+
+
+
+\begin{defn}[Clique oracle with $n$ layers]
+\begin{align}
+Clique\_Oracle_t&: \mathcal{P}(\mathcal{V}) \times \Sigma_t \to \{True, False\} \\
+Clique\_Oracle_t(n, V, \sigma, p) &:\Leftrightarrow Clique(n, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+\end{align}
+\end{defn}
+
+We now argue the following:
+
+\begin{lemma}[Clique oracles preserved over minimal transitions from validators not in clique]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  \overline{v} \notin V \setminus E(\sigma) \land Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \notin V \setminus E(\sigma) \land Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&\overline{v} \notin V \setminus E(\sigma) \land Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land \forall v \in \mathcal{V} \setminus \{\overline{v}\}, (v \in E(\sigma) \iff v \in E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land \forall v \in V \setminus E(\sigma), (v \in E(\sigma) \iff v \in E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land V \setminus E(\sigma) = V \setminus E(\sigma') \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+          &\land V \setminus E(\sigma) = V \setminus E(\sigma') \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+          &\land \sigma \subseteq \sigma' \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+          &\land Weight(E(\sigma)) \leq Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+  \implies&Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+\begin{lemma}[Clique oracles preserved over minimal transitions from non-equivocating validators]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  \overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique(1, V \setminus E(\sigma), \sigma, p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land \forall v \in V, Majority^H(V, !L^H_J(\sigma)(v)) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma') \land Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+          &\land V \setminus E(\sigma) = V \setminus E(\sigma') \land Weight(E(\sigma)) \leq Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma'), \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+  \implies&Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Clique oracles preserved over minimal transitions from non-equivocating validators]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  \overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma)) - W(\overline{v}) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) - W(\overline{v}) \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma)) - W(\overline{v}) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) - W(\overline{v}) \\
+          &\land V \setminus E(\sigma') = V \setminus E(\sigma) \cup \{\overline{v}\} \\
+  \implies&\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \land Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \\
+          &\land Weight(V \setminus E(\sigma')) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma')) \\
+  \implies&Clique(1, V \setminus E(\sigma) \setminus \{\overline{v}\}, \sigma', p) \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+  \implies&Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+
+Thus, we are finially ready a our major result:
+
+
+\begin{lemma}[Clique oracles preserved over minimal transitions]
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$, letting $\overline{m} = ~ !\sigma'\setminus\sigma$, and $\overline{v} = Sender(\overline{m})$,
+  $$
+  Clique\_Oracle_t(1, V, \sigma, p) \implies Clique\_Oracle_t(1, V, \sigma', p)
+  $$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+          &Clique\_Oracle_t(1, V, \sigma, p) \\
+  \implies&Clique\_Oracle_t(1, V, \sigma, p) \land (\overline{v} \notin V \setminus E(\sigma) \lor \overline{v} \in V \setminus E(\sigma)) \\
+  \implies&Clique\_Oracle_t(1, V, \sigma, p) \land (\overline{v} \not V \setminus E(\sigma) \lor \\
+          &(\overline{v} \in V \setminus E(\sigma) \land \overline{v} \in E(\sigma') \lor \overline{v} \in V \setminus E(\sigma) \land \overline{v} \notin E(\sigma')) \\
+  \implies&(Clique\_Oracle_t(1, V, \sigma', p) \lor (Clique\_Oracle_t(1, V, \sigma', p) \lor Clique\_Oracle_t(1, V, \sigma', p)) \\
+  \implies&(Clique\_Oracle_t(1, V, \sigma', p) \\
+\end{align}
+\end{proof}
+
+We now show that if there is a clique, then everyone in the clique is agreeing in the current protocol state.
+\begin{lemma}
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$
+\begin{align}
+Clique(1, V, p, \sigma) &\implies V \subseteq Agreeing(p, \sigma)
+\end{align}
+\end{lemma}
+
+\begin{proof}
+  \begin{align}
+            &Clique(1, V, p, \sigma) \\
+    \implies&\forall v \in V, V \subseteq Agreeing(p, L^H_J(\sigma)(v)) \\
+            &~~~~\land \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset \\
+    \implies&\forall v \in V, \forall v' \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v'), v', \sigma) = \emptyset \\
+    \implies&\forall v \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v), v, \sigma) = \emptyset \\
+    \implies&\forall v \in V, Later\_Disagreeing(p, L^H_M(L^H_J(\sigma)(v))(v), v, \sigma) = \emptyset \\
+    \implies&\forall v \in V, \{m \in Later\_From(L^H_M(L^H_J(\sigma)(v))(v), v, \sigma) : \neg p(Estimate(m)) \}  = \emptyset \\
+    \implies&\forall v \in V, \forall m \in \{m' \in \sigma : Sender(m') = v \land Later(m', L^H_M(L^H_J(\sigma)(v))(v))\}, p(Estimate(m)) \\
+    \implies&\forall v \in V, \forall m \in \{m' \in \sigma : Sender(m') = v \land Later(m', L^H_M(L^H_J(\sigma)(v))(v))\}, p(Estimate(m)) \\
+    &\land L^H_J(\sigma)(v) = Justification(L^H_M(\sigma)(v)) \\
+    \implies&\forall v \in V, \forall m \in \{m' \in \sigma : Sender(m') = v \land Later(m', L^H_M(L^H_J(\sigma)(v))(v))\}, p(Estimate(m)) \\
+    &\land L^H_M(L^H_J(\sigma)(v))(v)) \in Justification(L^H_M(\sigma)(v))\\
+    \implies&\forall v \in V, \forall m \in \{m' \in \sigma : Sender(m') = v \land Later(m', L^H_M(L^H_J(\sigma)(v))(v))\}, p(Estimate(m)) \\
+    &\land Later(L^H_M(\sigma)(v), L^H_M(L^H_J(\sigma)(v))(v)) \\
+    \implies&\forall v \in V, \forall m \in \{m' \in \sigma : Sender(m') = v \land Later(m', L^H_M(L^H_J(\sigma)(v))(v))\}, p(Estimate(m)) \\
+    &\land Later(L^H_M(\sigma)(v), L^H_M(L^H_J(\sigma)(v))(v)) \land Sender(L^H_M(\sigma)(v)) = v \land L^H_M(\sigma)(v) \in \sigma\\
+    \implies&\forall v \in V, \forall m \in \{L^H_M(\sigma)(v)\}, p(Estimate(m)) \\
+    \implies&\forall v \in V, p(Estimate(L^H_M(\sigma)(v))) \\
+    \implies&\forall v \in V, v \in Agreeing(p, \sigma) \\
+    \implies& V \subseteq Agreeing(p, \sigma) \\
+  \end{align}
+\end{proof}
+
+
+
+Now, we will show that if there is a threshold sized clique where no validators are equivocating, then the estimator will agree.
+
+\begin{lemma}
+  $\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p),$ $\forall (\sigma, \sigma') \in Minimal_t, \forall V \subseteq \mathcal{V}$
+\begin{align}
+Clique(1, V \setminus E(\sigma), p, \sigma) \land Threshold_t(V \setminus E(\sigma), \sigma) &\implies \forall c \in \mathcal{E}(\sigma), p(c)
+\end{align}
+\end{lemma}
+
+\begin{proof}
+  \begin{align}
+            &Clique(1, V \setminus E(\sigma), p, \sigma) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+    \implies&V \setminus E(\sigma) \subseteq Agreeing(p, \sigma) \land Threshold_t(V \setminus E(\sigma), \sigma) \\
+    \implies&V \setminus E(\sigma) \subseteq Agreeing(p, \sigma) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 + t - Weight(E(\sigma)) \\
+    \implies&V \setminus E(\sigma) \subseteq Agreeing(p, \sigma) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V})/2 \\
+    \implies&V \setminus E(\sigma) \subseteq Agreeing(p, \sigma) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \\
+    \implies& Weight(V \setminus E(\sigma)) \leq Weight(Agreeing(p, \sigma)) \land Weight(V \setminus E(\sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \\
+    \implies& Weight(Agreeing(p, \sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \\
+    \implies& Weight(Agreeing(p, \sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \\
+    &\land Majority\_Driven^H(p) \\
+    \implies& Weight(Agreeing(p, \sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \\
+    &\land [\forall \sigma' \in \Sigma, Weight(Agreeing(p, \sigma')) > Weight(\mathcal{V} \setminus E(\sigma'))/2 \implies \forall c \in \mathcal{E}(\sigma'), p(c)] \\
+    \implies& Weight(Agreeing(p, \sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \\
+    &\land [Weight(Agreeing(p, \sigma)) > Weight(\mathcal{V} \setminus E(\sigma))/2 \implies \forall c \in \mathcal{E}(\sigma), p(c)] \\
+    \implies& \forall c \in \mathcal{E}(\sigma), p(c) \\
+  \end{align}
+\end{proof}
+
+
+Now, with induction, we can show that when a $1$ layer clique oracle exists, it exists in all futures.
+
+
+\begin{lemma}[Cliques exist in all futures]
+$\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p), \forall \sigma \in \Sigma_t, \forall V \subseteq \mathcal{V}$,
+$$
+Clique\_Oracle_t(1, V, p, \sigma) \implies \forall \sigma' \in Futures_t(\sigma), Clique\_Oracle_t(1, V, p, \sigma')
+$$
+\end{lemma}
+
+\begin{proof}
+This follows clearly from two facts and the axiom of induction (although we leave a formal proof out for now):
+1. $forall (\sigma, \sigma') \in Minimal_t, Clique\_Oracle_t(1, V, p, \sigma) \implies Clique\_Oracle_t(1, V, p, \sigma')$
+2. $\forall \sigma' \in Futures(\sigma), \exists (\sigma_1, \cdots , \sigma_{n}) \in \Sigma_t^n : \sigma_1 = \sigma \land \sigma_n = \sigma' \land \forall i < n, (\sigma_i, \sigma_{i + 1}) \in Minimal_t$
+
+Thus, the clique oracle holds in all futures!
+\end{proof}
+
+
+Finially, we can show the final result:
+
+\begin{lemma}[Clique oracle is a safety oracle]
+$\forall p \in P_{\mathcal{C}} : Majority\_Driven^H(p), \forall \sigma \in \Sigma_t, \forall V \subseteq \mathcal{V}$,
+$$
+Clique\_Oracle_t(1, V, p, \sigma) \implies Safe_{\mathcal{C},t}(p, \sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+  \begin{align}
+    &Clique\_Oracle_t(1, V, p, \sigma) \\
+    \implies& \forall \sigma' \in Futures_t(\sigma), Clique\_Oracle_t(1, V, p, \sigma') \\
+    \implies& \forall \sigma' \in Futures_t(\sigma), Clique(1, V \setminus E(\sigma'), p, \sigma') \land Threshold_t(V \setminus E(\sigma'), \sigma') \\
+    \implies& \forall \sigma' \in Futures_t(\sigma), \forall c \in \mathcal{E}(\sigma'), p(c) ) \\
+    \implies& \forall \sigma' \in Futures_t(\sigma), H(p)(\sigma') \\
+    \implies& Safe_{\Sigma,t}(H(p), \sigma) \\
+    \implies& Safe_{\mathcal{C},t}(p, \sigma) \\
+  \end{align}
+\end{proof}
