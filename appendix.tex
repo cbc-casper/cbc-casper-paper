@@ -5,7 +5,7 @@ Here we give two concise equivalent definitions of the Minimal CBC Casper protoc
 Both of the definitions given here use the same ``parameters" as presented in this draft.
 
 \begin{align}
-&\text{Consensus Values :   } && \mathcal{C} \in SET ~ \land ~ \mathcal{C} \neq \emptyset \\ 
+&\text{Consensus Values :   } && \mathcal{C} \in SET ~ \land ~ \mathcal{C} \neq \emptyset \\
 &\text{Validators :   } && \mathcal{V} \in SET ~ \land ~ \mathcal{V} \neq \emptyset\\
 &\text{Estimator :   } &&\mathcal{E}: SET \to \mathcal{P}(\mathcal{C}) \\
 &\text{Validator Weights :   } &&\mathcal{W}: \mathcal{V} \to \mathbb{R}_+ \\
@@ -44,3 +44,235 @@ And the messages are the elements of the protocol states:
 \[
 M = \bigcup_{\substack{\gamma \in \Gamma \\ m \in \gamma}} \{m\}
 \]
+
+
+
+\pagebreak
+\subsection{Safety Proof with Different Thresholds}
+
+In this section, we will show that nodes have the ability to run at different fault tolerance thresholds, and still only make consensus safe decisions, so long as less than the minimum of their fault tolerance thresholds is no breached. This proof structure is very similar to the of safety proof with just a single threshold.
+
+\subsubsection{Guaranteeing Common Futures}
+
+Our first key theorem guarantees that a node with fault tolerance threshold $t_1$ and a node with fault tolerance threshold $t_2$ have a common future if not more than $min(t_1, t_2)$ fault weight is observed in the union of their states:
+
+\begin{thm}[2-party common futures]
+$\forall \sigma_1 \in \Sigma_t$, $\forall \sigma_2 \in \Sigma_t$,
+$$
+F(\sigma_1 \cup \sigma_2) \leq min(t_1, t_2) \implies Futures_{t_1}(\sigma_1) \cap Futures_{t_2}(\sigma_2) \neq \emptyset
+$$
+\end{thm}
+
+\begin{proof}
+\begin{align}
+         &F(\sigma_1 \cup \sigma_2) \leq min(t_1, t_2) \\
+\implies &F(\sigma_1 \cup \sigma_2) \leq t_1 \land F(\sigma_1 \cup \sigma_2) \leq t_2 \\
+\implies &\sigma_1 \cup \sigma_2 \in \Sigma_{t_1} \land \sigma_1 \cup \sigma_2 \in \Sigma_{t_2} \\
+\implies &\sigma_1 \cup \sigma_2 \in \Sigma_{t_1} \land \sigma_1 \cup \sigma_2 \in \Sigma_{t_2} \\
+         &\land \sigma_1 \to \sigma_1 \cup \sigma_2 \land \sigma_2 \to \sigma_1 \cup \sigma_2 \\
+\implies &\sigma_1 \cup \sigma_2 \in Futures_{t_1}(\sigma_1) \land \sigma_1 \cup \sigma_2 \in Futures_{t_2}(\sigma_2) \\
+\implies &\sigma_1 \cup \sigma_2 \in Futures_{t_1}(\sigma_1) \cap Futures_{t_2}(\sigma_2) \\
+\implies &Futures_{t_1}(\sigma_1) \cap Futures_{t_2}(\sigma_2) \neq \emptyset \\
+\end{align}
+\end{proof}
+
+Note the analogous guarantee that $n$ nodes have a common future if there aren't too many faults in the union of their states:
+
+\begin{thm}[$n$-party common futures]
+\label{thm:nparty_bft_common_futures}
+$\forall \sigma_i \in \Sigma_t$,
+$$
+F(\bigcup_{i=1}^n \sigma_i) \leq min(t_1, ..., t_n) \implies \bigcap_{i=1}^n Futures_{t_i}(\sigma_i) \neq \emptyset
+$$
+\end{thm}
+
+\begin{proof}
+Similar to proof of the 2-argument version.
+\end{proof}
+
+The theorems above guarantee that protocol-following nodes have a common future state if the validators that are equivocating in the union of their states have no more than the minimum of their fault tolerance threholds. This means that nodes can run at different fault tolerance thresholds and maintain a common future.
+
+\subsubsection{Guaranteeing Consistent Decisions}
+
+In this section, we show that if nodes have a common future state, then all of the invariant properties of their protocol states are consistent. We guarantee consensus safety by insisting that nodes have decided on the invariant properties of their protocol states. We leverage the consistency of decisions on properties of protocol states to guarantee the consistency of decisions on properties of consensus values.
+
+\paragraph{Guaranteeing Consistent Decisions on Properties of Protocol States}
+
+We note that in these lemmas and proofs, we assume that $t_1 \leq t_2$ without loss of generality.
+
+\begin{lemma}[Lower protocol states are in higher protocol state sets]
+$\forall t_1, t_2 : t_1 \leq t_2$
+$$
+\sigma \in \Sigma_{t_1} \implies \sigma \in \Sigma_{t_2}
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &\sigma \in \Sigma_{t_1} \\
+\implies&F(\sigma) \leq t_1 \\
+\implies&F(\sigma) \leq t_1 \land t_1 \leq t_2\\
+\implies&F(\sigma) \leq t_2 \\
+\implies&\sigma \in \Sigma_{t_2} \\
+\end{align}
+\end{proof}
+
+We note that this implies that $\Sigma_{t_1} \subseteq \Sigma_{t_2}$, when $t_1 \leq t_2$.
+
+\begin{lemma}[Futures are subsets]
+$\forall t_1, t_2 : t_1 \leq t_2$
+$$
+\sigma \in \Sigma_{t_1} \implies Futures_{t_1}(\sigma) \subseteq Futures_{t_2}(\sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &\sigma \in \Sigma_{t_1} \\
+\implies&Futures_{t_1}(\sigma) = \{\sigma' \in \Sigma_{t_1} : \sigma \to \sigma'\} \\
+\implies&Futures_{t_1}(\sigma) = \{\sigma' \in \Sigma_{t_1} : \sigma \to \sigma'\} \land \Sigma_{t_1} \subseteq \Sigma_{t_2} \\
+\implies&Futures_{t_1}(\sigma) = \{\sigma' \in \Sigma_{t_1} : \sigma \to \sigma'\} \land \{\sigma' \in \Sigma_{t_1} : \sigma \to \sigma'\} \subseteq \{\sigma' \in \Sigma_{t_2} : \sigma \to \sigma'\} \\
+\implies&Futures_{t_1}(\sigma) \subseteq \{\sigma' \in \Sigma_{t_2} : \sigma \to \sigma'\} \\
+\implies&Futures_{t_1}(\sigma) \subseteq Futures_{t_2}(\sigma) \\
+\end{align}
+\end{proof}
+
+TODO: there might be a bit of a proof obligation above, to show that $\to$ is preserved across these changes...
+
+
+\begin{lemma}[Higher decisions mean lower decisions]
+\label{lem:backw_safe}
+$\forall t_1, t_2 : t_1 \leq t_2, \forall \sigma \in \Sigma_{t_1}, \forall p \in P_\Sigma$
+$$
+Decided_{\Sigma, t_2}(p,\sigma) \implies Decided_{\Sigma, t_1}(p,\sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &Decided_{\Sigma, t_2}(p,\sigma) \\
+\implies&\forall \sigma' \in Futures_{t_2}(\sigma), p(\sigma') \\
+\implies&\forall \sigma' \in Futures_{t_2}(\sigma), p(\sigma') \land Futures_{t_1}(\sigma) \subseteq Futures_{t_2}(\sigma) \\
+\implies&\forall \sigma' \in Futures_{t_1}(\sigma), p(\sigma') \\
+\implies&Decided_{\Sigma, t_1}(p,\sigma) \\
+\end{align}
+\end{proof}
+
+
+\begin{lemma}[Not lower decisions mean not higher decisions]
+\label{lem:backw_safe}
+$\forall t_1, t_2 : t_1 \leq t_2, \forall \sigma \in \Sigma_{t_1}, \forall p \in P_\Sigma$
+$$
+\neg Decided_{\Sigma, t_1}(p,\sigma) \implies \neg Decided_{\Sigma, t_2}(p,\sigma)
+$$
+\end{lemma}
+
+\begin{proof}
+\begin{align}
+        &\neg Decided_{\Sigma, t_1}(p,\sigma) \\
+\implies&\neg (\forall \sigma' \in Futures_{t_1}(\sigma), p(\sigma')) \\
+\implies&\exists \sigma' \in Futures_{t_1}(\sigma), \neg p(\sigma') \\
+\implies&\exists \sigma' \in Futures_{t_1}(\sigma), \neg p(\sigma') \land Futures_{t_1}(\sigma) \subseteq Futures_{t_2}(\sigma) \\
+\implies&\exists \sigma' \in Futures_{t_2}(\sigma), \neg p(\sigma') \\
+\implies&\neg (\forall \sigma' \in Futures_{t_2}(\sigma), p(\sigma')) \\
+\implies&\neg Decided_{\Sigma, t_2}(p,\sigma) \\
+\end{align}
+\end{proof}
+
+
+
+\begin{thm}[Two-party consensus safety]
+\label{thm:2party_consensus_safety}
+$\forall t_1, t_2: t_1 \leq t_2, \forall \sigma_1 \in \Sigma_{t_1}, \forall \sigma_2 \in \Sigma_{t_2}, \forall p \in P_\Sigma$,
+\begin{align}
+F(\sigma_1 \cup \sigma_2) \leq min(t_1, t_2) \implies \neg (Decided_{\Sigma, t_1}(p,\sigma_1) \land Decided_{\Sigma, t_2}(\neg p, \sigma_2))
+\end{align}
+\end{thm}
+
+\begin{proof}
+\begin{align}
+        &F(\sigma_1\cup\sigma_2) \leq min(t_1, t_2) \\
+\implies&Futures_{t_1}(\sigma_1) \cap Futures_{t_2}(\sigma_2) \neq \emptyset \\
+\implies&\exists \sigma \in Futures_{t_1}(\sigma_1) \cap Futures_{t_2}(\sigma_2) \\
+\implies&\exists \sigma \in \Sigma_{t_1}, \sigma \in Futures_{t_1}(\sigma_1) \land \sigma \in Futures_{t_1}(\sigma_1) \\
+\implies&\exists \sigma \in \Sigma_{t_1}, (Decided_{\Sigma, t_1}(p,\sigma_1) \implies Decided_{\Sigma, t_1}(p,\sigma)) \land \\
+        &(Decided_{\Sigma, t_1}(p,\sigma) \implies \neg Decided_{\Sigma, t_1}(\neg p,\sigma_2)) \\
+\implies&Decided_{\Sigma, t_1}(p,\sigma_1) \implies \neg Decided_{\Sigma, t_1}(\neg p,\sigma_2) \\
+\implies&(Decided_{\Sigma, t_1}(p,\sigma_1) \implies \neg Decided_{\Sigma, t_1}(\neg p,\sigma_2)) \land \\
+        &(\neg Decided_{\Sigma, t_1}(\neg p,\sigma_2) \implies \neg Decided_{\Sigma, t_2}(\neg p,\sigma_2)) \\
+\implies&Decided_{\Sigma, t_1}(p,\sigma_1) \implies \neg Decided_{\Sigma, t_2}(\neg p,\sigma_2) \\
+\implies&\neg Decided_{\Sigma, t_1}(p,\sigma_1) \lor \neg Decided_{\Sigma, t_2}(\neg p,\sigma_2) \\
+\implies&\neg (Decided_{\Sigma, t_1}(p,\sigma_1) \land Decided_{\Sigma, t_2}(\neg p,\sigma_2)) \\
+\end{align}
+\end{proof}
+
+Note the contrapositive of this theorem, which shows that the existence of nodes at two states with inconsistent decisions implies that there are more than $t$ weight of validators equivocating:
+
+$$
+\exists p \in P_\Sigma,~ Decided_{\Sigma, t_1}(p,\sigma_1) \land Decided_{\Sigma, t_2}(\neg p, \sigma_2) \implies  F(\sigma_1 \cup \sigma_2) > min(t_1, t_2)
+$$
+
+Unfortunately, the two-party consensus safety result is not sufficient to guarantee the consistency of decisions made by more than 2 parties. To see this, consider a triple of properties $p$, $q$, $r$ such that $p~ \land~ q \implies \neg r$. If three nodes decide on $p$, $q$ and $r$ respectively, then they will have made inconsistent decisions, although they may be consistent pairwise. We therefore need to understand inconsistent decisions in a more general way than we considered for the two-party consensus safety result, where looking at properties and their negations was sufficient.
+
+We will say that properties are ``inconsistent'' if, for all protocol states, their conjunction is false:
+
+\begin{defn}[Inconsistency of properties of protocol states]
+$$ Inconsistent_\Sigma : \mathcal{P}(P_\Sigma) \to \{True, False\}$$
+$$ Inconsistent_\Sigma(Q): \Leftrightarrow \forall \sigma \in \Sigma, \bigwedge_{q \in Q} q(\sigma) = False $$
+\end{defn}
+
+Then we will say that properties are ``consistent" if they are not inconsistent:
+\begin{align}
+\neg Inconsistent_\Sigma(Q) \iff \neg (&\forall \sigma \in \Sigma, \bigwedge_{q \in Q} q(\sigma) = False) \\
+\iff &\exists \sigma \in \Sigma, \bigwedge_{q \in Q} q(\sigma) = True \\
+\iff &\exists \sigma \in \Sigma, \forall q \in Q, q(\sigma)
+\end{align}
+
+Which is to say that a set of properties is consistent if there is at least one protocol state that satisifies each of them:
+
+\begin{defn}[Consistency of properties of protocol states]
+$$ Consistent_\Sigma : \mathcal{P}(P_\Sigma) \to \{True, False\}$$
+$$ Consistent_\Sigma(Q): \Leftrightarrow \exists \sigma \in \Sigma, \forall q \in Q, ~ q(\sigma)$$
+\end{defn}
+
+The $n$-party consensus safety result will show the consistency of \emph{all} the decided properties in \emph{any} of the states of our $n$ nodes, if there are not more than $t$ equivocation faults by weight. So, we need to define a function that collects all the decisions from protocol states:
+
+\begin{defn}[Decisions on properties of protocol states]
+$$ Decisions_{\Sigma,t} : \Sigma \to \mathcal{P}(P_\Sigma)$$
+$$ Decisions_{\Sigma,t}(\sigma)= \{ p \in P_\Sigma: Decided_{\Sigma, t}(p,\sigma) \}.$$
+\end{defn}
+
+Now, we state the $n$-party consensus safety result, that the decided properties are consistent (if there aren't too many faults):
+
+\begin{thm}[$n$-party consensus safety for properties of protocol states]
+\label{thm:nparty_consensus_safety}
+$\forall \sigma_i \in \Sigma_t$,
+$$
+F(\bigcup_{i=1}^n \sigma_i) \leq t \implies Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i))
+$$
+\end{thm}
+
+\begin{proof}
+\begin{align}
+F(\bigcup_{i=1}^n \sigma_i) \leq t &\implies \bigcap_{i=1}^n Futures_t(\sigma_i) \neq \emptyset \\
+&\iff \exists \sigma \in \Sigma_t, \sigma \in \bigcap_{i = 1}^n Futures_t(\sigma_i) \\
+&\iff \exists \sigma \in \Sigma_t, \bigwedge_{i = 1}^n \sigma \in Futures_t(\sigma_i) \\
+&\iff \exists \sigma \in \Sigma_t, \bigwedge_{i = 1}^n \sigma \in Futures_t(\sigma_i)  \\
+&\land \bigwedge_{j = 1}^n \sigma \in Futures_t(\sigma_j) \implies (\forall p \in P_\Sigma, Decided_{\Sigma, t}(p,\sigma_j) \implies Decided_{\Sigma, t}(p, \sigma)) \\
+&\implies \exists \sigma \in \Sigma_t,\bigwedge_{i = 1}^n \forall p \in P_\Sigma, Decided_{\Sigma, t}(p,\sigma_i) \implies Decided_{\Sigma, t}(p, \sigma) \\
+&\implies \exists \sigma \in \Sigma_t,\bigwedge_{i = 1}^n \forall p \in Decisions_{\Sigma,t}(\sigma_i), Decided_{\Sigma, t}(p,\sigma_i) \implies Decided_{\Sigma, t}(p, \sigma)\\
+&\iff \exists \sigma \in \Sigma_t, \bigwedge_{i = 1}^n \forall p \in Decisions_{\Sigma,t}(\sigma_i), Decided_{\Sigma, t}(p, \sigma)\\
+&\iff \exists \sigma \in \Sigma_t, \forall p \in \bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i), Decided_{\Sigma, t}(p, \sigma)\\
+&\implies \exists \sigma \in \Sigma_t, \forall p \in \bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i), p(\sigma)\\
+%&\implies \exists \sigma \in \Sigma, \forall p \in Decisions_{\Sigma,t}(\sigma_i), p(\sigma)\\
+&\iff Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i))
+\end{align}
+\end{proof}
+
+
+Note the contrapositive, that the existence of inconsistent decisions means that there must be more than $t$ weight equivocating:
+$$
+\neg Consistent_\Sigma(\bigcup_{i=1}^n Decisions_{\Sigma,t}(\sigma_i)) \implies F(\bigcup_{i=1}^n \sigma_i) > t
+$$
+
+This concludes the consensus safety proof for decisions on properties of protocol states. We will now show how we can leverage this consensus safety theorem and the estimator to allow nodes to make consistent decisions on properties of consensus values.
