@@ -40,7 +40,7 @@ From\_Group(V, \sigma) =& \{m \in \sigma : Sender(m) \in V \} \\
 
 \begin{defn}
 \begin{align*}
-Later\_From:& M \times \mathcal{V} \times \mathcal{P}(M) \\
+Later\_From:& M \times \mathcal{V} \times \mathcal{P}(M) \to \mathcal{P}(M) \\
 Later\_From(m, v, \sigma) =& Later(m, \sigma) \cap From\_Sender(v, \sigma)
 \end{align*}
 \end{defn}
