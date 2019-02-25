@@ -330,13 +330,13 @@ $$
 
 We think of protocol-following nodes as existing in these protocol states ($\Sigma_t$), and following the protocol state transitions ($\to$) to get from one state to another. If a node at state $\sigma \in \Sigma_t$ receives messages $m$ such that $\sigma \cup \{m\} \in \Sigma$, then they will transition to state $\sigma \cup \{m\}$, if it doesn't expose the node to too many equivocation faults (i.e., as long as $F(\sigma \cup \{m\}) \leq t$).
 
-We are now finished with the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of less than $t$ equivocations (by weight)).
+We are now finished with the protocol definition and are ready to prove consensus safety for the family of protocols that satisfy this definition (in the context of $t$ equivocations (by weight) or less).
 
 
 \pagebreak
 \section{Safety Proof}
 
-Our goal is to provide a way for nodes to make consistent decisions even if they receive different messages, as long as there are less than $t$ equivocation faults in their protocol states. We do this in two steps, first by guaranteeing that nodes will have common future protocol states (as long as there are less than $t$ equivocation faults \emph{in the union of their protocol states}), and then by showing that their decisions on properties of protocol states will be consistent (if they share common future states, which they will if there are not too many faults). Finally, we will show how this result can be leveraged to guarantee the consistency of decisions on properties of consensus values.
+Our goal is to provide a way for nodes to make consistent decisions even if they receive different messages, as long as there are not more than $t$ equivocation faults in their protocol states. We do this in two steps, first by guaranteeing that nodes will have common future protocol states (as long as there are not more than $t$ equivocation faults \emph{in the union of their protocol states}), and then by showing that their decisions on properties of protocol states will be consistent (if they share common future states, which they will if there are not too many faults). Finally, we will show how this result can be leveraged to guarantee the consistency of decisions on properties of consensus values.
 
 \subsection{Guaranteeing Common Futures}
 
